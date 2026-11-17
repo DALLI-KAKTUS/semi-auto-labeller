@@ -192,7 +192,9 @@ class SegModel:
         if self._device != "auto":
             return self._device
         import torch
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        return "mps" if torch.backends.mps.is_available() else "cpu"      # Apple Silicon GPU
 
     def load(self) -> None:
         """Ağı belleğe alır (ilk tahmin beklemesin diye ayrı çağrılabilir)."""
