@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import hashlib
 import json
+import os
 import re
 import shutil
 import tempfile
@@ -29,6 +30,15 @@ OVERLAY_MAX = 1600
 
 class UserError(ValueError):
     """Kullanıcıya olduğu gibi gösterilecek hata."""
+
+
+def _link_or_copy(src, dst):
+    """Sabit bağlantı (aynı disk, ek yer yok; dosyalar hiç değiştirilmez), olmazsa kopya."""
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+    return dst
 
 
 def safe_name(name: str) -> str:
@@ -106,6 +116,21 @@ class Service:
         pid = self.ls().get_or_create_project(None, name, self.s.label_config)
         return self.db.run("INSERT INTO datasets (name, owner_id, ls_project, created) VALUES (?, ?, ?, ?)",
                            name, user_id, pid, now())
+
+    def copy_dataset(self, src: dict, name: str, user_id: int) -> int:
+        """Görüntüleri (etiketsiz) yeni veri setine kopyalar; dosyalar mümkünse sabit bağlantıyla paylaşılır, yer
+        kaplamaz. Label Studio görevleri ayrıca sync_tasks ile oluşturulur (yüzlerce görüntüde uzun sürer)."""
+        did = self.create_dataset(name, user_id)
+        for img in self.db.images(src["id"]):
+            iid = self.db.run("INSERT INTO images (dataset_id, name, file, created) VALUES (?, ?, '', ?)",
+                              did, img["name"], now())
+            old, new = self.image_dir(img), self.image_dir({"id": iid, "dataset_id": did})
+            new.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(old, new, copy_function=_link_or_copy)
+            moved = lambda key: str((new / self.path(img, key).relative_to(old)).relative_to(self.s.data_dir))
+            self.db.run("UPDATE images SET file = ?, display = ?, width = ?, height = ? WHERE id = ?",
+                        moved("file"), moved("display"), img["width"], img["height"], iid)
+        return did
 
     def delete_dataset(self, ds: dict, delete_project: bool) -> None:
         if delete_project and ds["ls_project"]:

@@ -186,6 +186,30 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
             return back("/", err=str(e))
         return back(f"/datasets/{did}", msg="veri seti ve Label Studio projesi oluşturuldu")
 
+    copying: set[int] = set()          # Label Studio görevleri arka planda oluşturulan kopyalar
+
+    def fill_tasks(did: int) -> None:
+        try:
+            svc.sync_tasks(db.dataset(did))
+        except LSError:
+            pass                       # eksikler veri seti sayfasındaki "Tekrar dene" ile tamamlanır
+        finally:
+            copying.discard(did)
+
+    @app.post("/datasets/{did}/copy")
+    def copy_dataset(request: Request, did: int, name: str = Form(...)):
+        u = user_of(request)
+        src = dataset_or_404(did)
+        try:
+            new = svc.copy_dataset(src, name, u["id"])
+        except (UserError, LSError, OSError) as e:
+            return back(f"/datasets/{did}", err=str(e))
+        copying.add(new)
+        r = back(f"/datasets/{new}", msg="görüntüler etiketsiz kopyalandı; Label Studio görevleri arka planda "
+                                         "oluşturuluyor (sayfayı birkaç dakika sonra yenileyin)")
+        r.background = BackgroundTask(fill_tasks, new)
+        return r
+
     @app.get("/datasets/{did}", response_class=HTMLResponse)
     def dataset_page(request: Request, did: int):
         u = user_of(request)
@@ -207,7 +231,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
                          "ORDER BY id DESC LIMIT 10", did)
         for r in reports:
             r["summary"] = json.loads(r["summary"])
-        return page(request, "dataset.html", u, ds=ds, images=images, stats=stats, ls_err=ls_err,
+        return page(request, "dataset.html", u, ds=ds, images=images, stats=stats, ls_err=ls_err, copying=did in copying,
                     project_link=svc.project_link(ds["ls_project"]), runners=usable_runners(u), jobs=db.jobs(did, 20),
                     reports=reports, versions=sorted({v for i in images for v in i["versions"]}),
                     formats=export.FORMATS, accept=",".join(C.IMAGE_EXT),

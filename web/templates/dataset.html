@@ -17,7 +17,9 @@
 </header>
 
 {% if ls_err %}<div class="flash err">{{ icon("alert") }}<span>Label Studio'ya ulaşılamadı, durumlar eksik: {{ ls_err }}</span></div>{% endif %}
-{% if stats.missing_task %}
+{% if stats.missing_task and copying %}
+<div class="flash">{{ icon("refresh") }}<span>Kopya hazırlanıyor: {{ stats.total - stats.missing_task }} / {{ stats.total }} görüntü Label Studio'ya aktarıldı. Sayfayı yenileyerek izleyebilirsiniz.</span></div>
+{% elif stats.missing_task %}
 <div class="flash warn">{{ icon("alert") }}<span>{{ stats.missing_task }} görüntü Label Studio'ya yüklenemedi.</span>
   <form method="post" action="/datasets/{{ ds.id }}/sync" class="inline"><button class="btn sm secondary">{{ icon("refresh") }} Tekrar dene</button></form></div>
 {% endif %}
@@ -97,6 +99,19 @@
     <p class="muted small pad no-match" hidden>Filtreye uyan görüntü yok.</p>
     {% endif %}
   </section>
+
+  {% if images %}
+  <details class="card copy-zone">
+    <summary>{{ icon("box") }} Veri setini kopyala</summary>
+    <p class="muted small">Yalnız görüntüler kopyalanır (yeniden yüklemeden); ön etiketler ve insan etiketleri
+      kopyalanmaz. Yeni bir Label Studio projesi açılır; başka bir modelle sıfırdan ön etiketleme için kullanın.
+      Görüntü dosyaları sunucuda ek yer kaplamaz.</p>
+    <form method="post" action="/datasets/{{ ds.id }}/copy" class="stack">
+      <label class="field"><span>Yeni veri setinin adı</span><input name="name" value="{{ ds.name }} (kopya)" required></label>
+      <div><button class="btn secondary">Kopyala</button></div>
+    </form>
+  </details>
+  {% endif %}
 
   {% if user.admin or ds.owner_id == user.id %}
   <details class="card danger-zone">

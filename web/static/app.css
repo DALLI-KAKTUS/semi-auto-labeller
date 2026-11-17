@@ -481,3 +481,6 @@ details.card.sub-panel > summary { padding: 14px 16px; }
 .link-btn.small { font-size: 12.5px; }
 .model-upl { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .model-upl progress { width: 100%; }
+.copy-zone > summary { display: flex; align-items: center; gap: 8px; font-weight: 580; }
+.copy-zone[open] > summary { margin-bottom: 14px; }
+.copy-zone { margin-bottom: 16px; }

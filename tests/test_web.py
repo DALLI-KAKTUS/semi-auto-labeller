@@ -429,3 +429,25 @@ def test_pairing_shared_flag(env):
         env.client.post("/baglan", data={"code": p["code"], "action": "approve", "name": f"pc{want}", "shared": shared})
         rid = anon.post("/api/runner/pair/poll", json={"secret": p["secret"]}).json()["runner_id"]
         assert env.app.state.db.one("SELECT shared FROM runners WHERE id = ?", rid)["shared"] == want
+
+
+def test_copy_dataset_copies_images_without_labels(env):
+    db = env.app.state.db
+    r = env.client.post("/datasets", data={"name": "kaynak"}, follow_redirects=False)
+    did = int(r.headers["location"].split("/")[2].split("?")[0])
+    buf = io.BytesIO()
+    Image.new("L", (80, 60), 128).save(buf, "PNG")
+    assert env.client.post(f"/api/datasets/{did}/images", files={"file": ("a.png", buf.getvalue())}).status_code == 200
+    src = db.images(did)[0]
+    env.ls.tasks_[src["ls_task"]].annotations.append({"result": [], "was_cancelled": False})
+    r = env.client.post(f"/datasets/{did}/copy", data={"name": "kopya"}, follow_redirects=False)
+    new = int(r.headers["location"].split("/")[2].split("?")[0])
+    assert new != did and db.dataset(new)["ls_project"] != db.dataset(did)["ls_project"]
+    img = db.images(new)[0]
+    assert img["name"] == "a.png" and img["ls_task"] and img["ls_task"] != src["ls_task"]
+    # dosya yeniden yüklenmedi: aynı dosyaya sabit bağlantı
+    a, b = env.settings.data_dir / src["file"], env.settings.data_dir / img["file"]
+    assert a != b and a.read_bytes() == b.read_bytes() and (os.name == "nt" or a.stat().st_ino == b.stat().st_ino)
+    assert not env.ls.tasks_[img["ls_task"]].annotations and env.ls.tasks_[img["ls_task"]].predictions == []
+    page = env.client.get(f"/datasets/{new}").text
+    assert "a.png" in page and "kopya" in page
