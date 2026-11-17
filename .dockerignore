@@ -1,0 +1,11 @@
+.venv
+.venv-ls
+.ls-data
+webdata
+work
+.env
+__pycache__
+*.pyc
+docs
+tests
+config.yaml

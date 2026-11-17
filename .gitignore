@@ -1,0 +1,12 @@
+.venv/
+.venv-ls/
+.ls-data/
+work/
+__pycache__/
+*.pyc
+webdata/
+.env
+.local-demo.env
+.pytest_cache/
+.DS_Store
+config.yaml

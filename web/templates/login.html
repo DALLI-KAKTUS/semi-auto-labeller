@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Giriş · ENG label app{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Giriş</h1>
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>Kullanıcı adı <input name="username" autocomplete="username" required autofocus></label>
+    <label>Parola <input name="password" type="password" autocomplete="current-password" required></label>
+    <button>Giriş yap</button>
+  </form>
+  <p class="muted">Hesabı yönetici açar. Label Studio'daki etiketleme hesabı ayrıdır.</p>
+</section>
+{% endblock %}

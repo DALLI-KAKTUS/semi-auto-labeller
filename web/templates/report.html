@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Rapor #{{ r.id }} · {{ ds.name }}{% endblock %}
+{% block content %}
+{% set c, n, g = r.summary.cells, r.summary.neurite, r.summary.group %}
+<div class="head">
+  <h1>Model ve insan karşılaştırması · rapor #{{ r.id }}</h1>
+  <div class="muted"><a href="/datasets/{{ ds.id }}">{{ ds.name }}</a> · {{ r.created[:16].replace("T", " ") }} · {{ r.user or "-" }} ·
+    model: <span class="mono">{{ r.model_version or "her görevin en son tahmini" }}</span> ·
+    <a href="/reports/{{ r.id }}/report.md">Markdown</a> · <a href="/reports/{{ r.id }}/report.json">JSON</a></div>
+  <div class="stats">
+    <div><b>{{ r.summary.tasks }}</b> kontrol edilen görev</div>
+    <div><b>{{ r.summary.tasks_unchanged }}</b> değiştirilmeden onaylandı</div>
+    <div><b>{{ c.f1 | num }}</b> hücre F1</div>
+    <div><b>{{ c.mean_iou | num }}</b> eşleşen hücre ort. IoU</div>
+    <div><b>{{ n.dice | num }}</b> nörit Dice</div>
+  </div>
+</div>
+
+<div class="grid2">
+<section class="card">
+  <h2>Hücreler</h2>
+  <p class="muted">IoU ≥ 0.5 ile bire bir eşleme. Eşleşmeyen model hücresi = insanın sildiği, eşleşmeyen insan hücresi =
+    insanın eklediği, IoU &lt; 0.95 eşleşme = sınırı düzeltilen.</p>
+  <table class="kv">
+    <tr><th>model hücresi</th><td>{{ c.model_cells }}</td></tr>
+    <tr><th>insan hücresi</th><td>{{ c.human_cells }}</td></tr>
+    <tr><th>eşleşen</th><td>{{ c.matched }} ({{ c.unchanged }} aynen, {{ c.edited }} sınırı düzeltilmiş)</td></tr>
+    <tr><th>silinen (yanlış pozitif)</th><td>{{ c.deleted }}</td></tr>
+    <tr><th>eklenen (kaçırılan)</th><td>{{ c.added }}</td></tr>
+    <tr><th>kesinlik / duyarlılık</th><td>{{ c.precision | pct }} / {{ c.recall | pct }}</td></tr>
+  </table>
+</section>
+<section class="card">
+  <h2>Nörit ve grup (piksel)</h2>
+  <table>
+    <thead><tr><th></th><th>model px</th><th>insan px</th><th>eklenen</th><th>silinen</th><th>Dice</th><th>IoU</th></tr></thead>
+    <tbody>
+      <tr><th>nörit</th><td>{{ n.model_px }}</td><td>{{ n.human_px }}</td><td>{{ n.added_px }}</td><td>{{ n.removed_px }}</td><td>{{ n.dice | num }}</td><td>{{ n.iou | num }}</td></tr>
+      <tr><th>grup</th><td>{{ g.model_px }}</td><td>{{ g.human_px }}</td><td>{{ g.added_px }}</td><td>{{ g.removed_px }}</td><td>{{ g.dice | num }}</td><td>{{ g.iou | num }}</td></tr>
+    </tbody>
+  </table>
+  <p class="legend"><span style="color:#f0f">■</span> model hücresi <span style="color:#0c0">■</span> insan hücresi
+    <span style="color:#fd0">■</span> nörit (ikisi) <span style="color:#f33">■</span> yalnız model
+    <span style="color:#0cf">■</span> yalnız insan <span style="color:#f80">■</span> model grubu <span style="color:#36f">■</span> insan grubu</p>
+</section>
+</div>
+
+<section class="card">
+  <h2>Görüntü başına</h2>
+  <table>
+    <thead><tr><th>görüntü</th><th>model / insan hücre</th><th>silinen</th><th>eklenen</th><th>düzeltilen</th><th>F1</th><th>nörit Dice</th><th>grup Dice</th><th></th></tr></thead>
+    <tbody>
+    {% for row in r.rows %}
+      <tr class="{{ 'same' if row.unchanged }}">
+        <td>{{ row.image }}{% if row.unchanged %} <span class="badge done">aynen onaylandı</span>{% endif %}</td>
+        <td>{{ row.cells.model_cells }} / {{ row.cells.human_cells }}</td><td>{{ row.cells.deleted }}</td>
+        <td>{{ row.cells.added }}</td><td>{{ row.cells.edited }}</td><td>{{ row.cells.f1 | num }}</td>
+        <td>{{ row.neurite.dice | num }}</td><td>{{ row.group.dice | num }}</td>
+        <td>{% if row.link %}<a href="{{ row.link }}" target="_blank" rel="noopener">Label Studio ↗</a>{% endif %}
+          {% if row.has_image %}<button class="link" onclick="toggleOverlay(this, '/datasets/{{ ds.id }}/overlay/{{ row.image_id }}.png?version={{ (r.model_version or '') | urlencode }}')">bindirme</button>{% endif %}</td>
+      </tr>
+      <tr class="overlay-row" hidden><td colspan="9"><img alt="model ve insan etiketleri"></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

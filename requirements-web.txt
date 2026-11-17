@@ -1,0 +1,15 @@
+# Web sunucusu (Docker imajı). Model yığını (torch, cellpose...) gerekmez: model kullanıcının bilgisayarındaki
+# yerel çalıştırıcıda çalışır (requirements.txt).
+fastapi==0.163.2
+uvicorn[standard]==0.54.0
+python-multipart==0.0.34
+jinja2==3.1.6
+httpx==0.28.1
+label-studio-sdk==2.0.13
+numpy==2.4.6
+scipy==1.17.1
+opencv-python-headless==5.0.0.93
+pillow==12.3.0
+PyYAML==6.0.3
+czifile==2019.7.2.3          # CZI'leri Label Studio için PNG'ye çevirmek
+imagecodecs==2026.3.6        # sıkıştırılmış CZI/TIFF

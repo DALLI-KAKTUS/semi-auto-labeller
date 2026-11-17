@@ -1,0 +1,18 @@
+# VPS'te mevcut `web-gateway` Caddy kullanılır. İkinci Caddy/host portu açılmaz:
+# docker compose -f docker-compose.yml -f deploy/compose.vps.yml up -d --build
+services:
+  web:
+    networks:
+      default: {}
+      web-gateway:
+        aliases: [eng-pc12-web]
+  label-studio:
+    networks:
+      default: {}
+      web-gateway:
+        aliases: [eng-pc12-labelstudio]
+
+networks:
+  web-gateway:
+    external: true
+    name: web-gateway

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Hesap · ENG label app{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>{{ user.username }}</h1>
+  <h2>Parola değiştir</h2>
+  <form method="post" action="/account/password" class="stack">
+    <label>Mevcut parola <input name="old" type="password" autocomplete="current-password" required></label>
+    <label>Yeni parola (en az 8 karakter) <input name="new" type="password" minlength="8" autocomplete="new-password" required></label>
+    <button>Kaydet</button>
+  </form>
+</section>
+{% endblock %}

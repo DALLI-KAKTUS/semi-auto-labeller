@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Yerel çalıştırıcılar · ENG label app{% endblock %}
+{% block content %}
+<h1>Yerel çalıştırıcılar</h1>
+<p class="lead">Model sunucuda çalışmaz: kendi bilgisayarınızda (GPU'lu ya da değil) küçük bir program olan <b>yerel
+  çalıştırıcı</b> sunucuya bağlanır, iş olup olmadığını sorar, görüntüleri indirir, modelinizle tahmin eder ve
+  sonuçları geri gönderir. Bilgisayarınızda port açmanız gerekmez; model dosyanız bilgisayarınızdan çıkmaz.</p>
+
+{% if new_token %}
+<section class="card highlight">
+  <h2>Çalıştırıcı anahtarı (yalnız şimdi gösteriliyor)</h2>
+  <pre class="copy">{{ new_token }}</pre>
+  <p>Kendi bilgisayarınızda uygulama klasöründe çalıştırın:</p>
+  <pre class="copy">scripts/run_runner.sh --server {{ server_url }} --token {{ new_token }} \
+  --model models/lite_v8.json=/yol/lite_net.pt</pre>
+  <p>Yalnız web'den yüklediğiniz modeli kullanacaksanız komuttaki <code>--model ...</code> bölümünü çıkarın.</p>
+  <p class="muted">Windows: <code>scripts\run_runner.bat</code> aynı argümanlarla. Anahtarı ortam değişkeni olarak da
+    verebilirsiniz: <code>ENG_RUNNER_TOKEN</code>.</p>
+</section>
+{% endif %}
+
+<div class="grid2">
+<section class="card">
+  <h2>Kurulum</h2>
+  <ol>
+    <li><a href="/download/runner.zip">Çalıştırıcıyı indirin</a> (uygulama kodu ve model kartları; model dosyası dahil değil) ve açın.</li>
+    <li>Python 3.11 ortamı: <pre>uv venv --python 3.11 .venv
+uv pip install --python .venv -r requirements.txt</pre></li>
+    <li>Aşağıdan anahtar oluşturun ve gösterilen komutu çalıştırın.</li>
+  </ol>
+  <h3>Model</h3>
+  <p><code>--model</code> birden çok kez verilebilir:</p>
+  <ul>
+    <li><code>models/lite_v8.json=/yol/lite_net.pt</code>: model kartı ve ağırlık dosyası (PC12 lite_v8 ağı)</li>
+    <li><code>/yol/model.onnx</code>: yanında aynı adlı <code>.json</code> kartı olan ONNX modeli</li>
+    <li><code>python:/yol/model.py:Sinif</code>: kendi Python sınıfınız</li>
+  </ul>
+  <p class="muted">Kart biçimi indirdiğiniz paketteki <code>models/README.md</code> dosyasında. Etiket adları
+    sunucudan gelir (Cell, Neurite, Group).</p>
+</section>
+
+<section class="card">
+  <h2>Kayıtlı çalıştırıcılar</h2>
+  {% if runners %}
+  <table>
+    <thead><tr><th>ad</th><th>sahibi</th><th>durum</th><th>modeller</th><th>bilgisayar</th><th></th></tr></thead>
+    <tbody>
+    {% for r in runners %}
+      <tr><td>{{ r.name }}</td><td>{{ r.owner }}</td>
+        <td><span class="dot {{ 'on' if r.online else 'off' }}"></span> {{ r.last_seen | ago }}</td>
+        <td>{% for m in r.models %}<div><b>{{ m.name }}</b> <span class="mono muted">{{ m.version }}</span> · {{ m.device }}</div>{% else %}-{% endfor %}</td>
+        <td class="muted">{{ r.info.hostname or "" }} {{ r.info.platform or "" }}</td>
+        <td>{% if user.admin or r.user_id == user.id %}
+          <form method="post" action="/runners/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Çalıştırıcı silinsin mi? Anahtarı geçersiz olur.')"><button class="link danger">sil</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Henüz çalıştırıcı yok.</p>{% endif %}
+  <form method="post" action="/runners" class="row">
+    <input name="name" placeholder="ad (ör. laboratuvar GPU bilgisayarı)">
+    <button>Yeni anahtar oluştur</button>
+  </form>
+</section>
+</div>
+{% endblock %}

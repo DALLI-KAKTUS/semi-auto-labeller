@@ -1,0 +1,18 @@
+# Yerel TUI/CLI için: `cp config.example.yaml config.yaml`, sonra kendi yollarınızı girin.
+label_studio:
+  url: http://127.0.0.1:8080
+  api_key: ""                       # boşsa LABEL_STUDIO_API_KEY ortam değişkeni
+  project_title: PC12 hücre etiketleme
+  project_id: null
+model:
+  card: models/lite_v8.json
+  weights: ""                        # örn. /yol/lite_net.pt; boşsa kartın weights alanı
+  device: auto
+classes:
+  cell: Cell
+  branch: Neurite
+  group: Group
+min_score: 0.0
+data:
+  images: ""                         # yerel görüntü klasörü
+work_dir: work

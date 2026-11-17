@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid2">
+<section class="card">
+  <h1>Veri setleri</h1>
+  <p class="muted">Her veri seti Label Studio'da bir projedir. Görüntüleri yükleyin, kendi bilgisayarınızdaki model
+    ön etiketlesin, Label Studio'da kontrol edin, sonra model ile insan etiketlerini karşılaştırın.</p>
+  <form method="post" action="/datasets" class="row">
+    <input name="name" placeholder="yeni veri seti adı (ör. PC12 2026-11 deney 3)" required>
+    <button>Oluştur</button>
+  </form>
+  {% if datasets %}
+  <table>
+    <thead><tr><th>ad</th><th>görüntü</th><th>sahibi</th><th>oluşturma</th></tr></thead>
+    <tbody>
+    {% for d in datasets %}
+      <tr><td><a href="/datasets/{{ d.id }}">{{ d.name }}</a></td><td>{{ d.n_images }}</td>
+        <td>{{ d.owner or "-" }}</td><td>{{ d.created[:16].replace("T", " ") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Henüz veri seti yok.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Yerel çalıştırıcılar</h2>
+  {% if runners %}
+  <ul class="plain">
+    {% for r in runners %}
+    <li><span class="dot {{ 'on' if r.online else 'off' }}"></span> <b>{{ r.name }}</b> ({{ r.owner }}) ·
+      {{ r.models | map(attribute="name") | join(", ") or "model yok" }} · {{ r.last_seen | ago }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Model sizin bilgisayarınızda çalışır. <a href="/runners">Yerel çalıştırıcı ekleyin</a>.</p>
+  {% endif %}
+  <h2>Son işler</h2>
+  {% if jobs %}
+  <table class="small">
+    <thead><tr><th>#</th><th>veri seti</th><th>model</th><th>durum</th><th>ilerleme</th></tr></thead>
+    <tbody>{% for j in jobs %}
+      <tr><td>{{ j.id }}</td><td><a href="/datasets/{{ j.dataset_id }}">{{ j.dataset }}</a></td><td>{{ j.model }}</td>
+        <td><span class="badge {{ j.status }}">{{ j.status }}</span></td><td>{{ j.done }}/{{ j.total }}{% if j.failed %}, {{ j.failed }} hata{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+  {% else %}<p class="muted">İş yok.</p>{% endif %}
+</section>
+</div>
+{% endblock %}

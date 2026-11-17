@@ -1,0 +1,11 @@
+<View>
+  <Header value="PC12: hücre ve grup poligon, nörit fırça ile"/>
+  <Image name="image" value="$image" zoom="true" zoomControl="true" brightnessControl="true" contrastControl="true"/>
+  <PolygonLabels name="objects" toName="image" strokeWidth="2" pointSize="small" opacity="0.35">
+    <Label value="Cell" background="#ff4d4f"/>
+    <Label value="Group" background="#1677ff"/>
+  </PolygonLabels>
+  <BrushLabels name="neurite" toName="image" opacity="0.6">
+    <Label value="Neurite" background="#52c41a"/>
+  </BrushLabels>
+</View>

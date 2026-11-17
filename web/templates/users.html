@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcılar · ENG label app{% endblock %}
+{% block content %}
+<h1>Kullanıcılar</h1>
+<p class="muted">Bu hesaplar web uygulaması içindir. Etiketleyenlerin Label Studio'da ayrıca hesabı olmalı
+  (Label Studio > Organization > Invite people).</p>
+<div class="grid2">
+<section class="card">
+  <table>
+    <thead><tr><th>kullanıcı</th><th>rol</th><th>oluşturma</th><th>parola sıfırla</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr><td>{{ u.username }}</td><td>{{ "yönetici" if u.admin else "kullanıcı" }}</td><td>{{ u.created[:10] }}</td>
+        <td><form method="post" action="/users/{{ u.id }}/password" class="row tight">
+          <input name="password" type="password" placeholder="yeni parola" minlength="8" required><button class="small">kaydet</button></form></td>
+        <td>{% if u.id != user.id %}<form method="post" action="/users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('{{ u.username }} silinsin mi?')"><button class="link danger">sil</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+<section class="card">
+  <h2>Kullanıcı ekle</h2>
+  <form method="post" action="/users" class="stack">
+    <label>Kullanıcı adı <input name="username" required></label>
+    <label>Parola (en az 8 karakter) <input name="password" type="password" minlength="8" required></label>
+    <label class="check"><input type="checkbox" name="admin" value="1"> yönetici</label>
+    <button>Ekle</button>
+  </form>
+</section>
+</div>
+{% endblock %}

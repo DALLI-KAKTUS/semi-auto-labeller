@@ -1,0 +1,28 @@
+{
+  "name": "lite_v8",
+  "description": "PC12 tek ağ: smp U-Net + ConvNeXt-tiny kodlayıcı, 7 kanal [arka plan, hücre, nörit, grup, akışY, akışX, hücre olasılığı]. Eşikler eğitimdeki doğrulama ayarları.",
+  "weights": "lite_net.pt",
+  "format": "smp",
+  "net": {"arch": "Unet", "encoder": "tu-convnext_tiny", "in_channels": 1, "classes": 7, "state_dict_prefix": "model."},
+  "input": {
+    "channel": "green",
+    "percentile": [1.0, 99.8],
+    "mean": 0.449,
+    "std": 0.226,
+    "frame": [1920, 1080],
+    "pad": {"multiple": 32, "sizes": {"1080x1920": [1280, 2048]}}
+  },
+  "output": {
+    "class_channels": [0, 1, 2, 3],
+    "activation": "softmax",
+    "classes": {"cell": 1, "branch": 2, "group": 3},
+    "flow_channels": [4, 5],
+    "cellprob_channel": 6,
+    "fp16_roundtrip": true
+  },
+  "decode": {
+    "cell": {"flow_threshold": 0.4, "cellprob_threshold": -1.5, "niter": 200, "min_size": 0, "circ_min": 0.0},
+    "branch": {"thr": null, "min": 100, "bridge": 10},
+    "group": {"thr": 0.3, "min": 2000}
+  }
+}

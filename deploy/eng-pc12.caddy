@@ -1,0 +1,21 @@
+# /opt/web-gateway/config/sites/eng-pc12.caddy
+# Ortak gateway'in `web-gateway` Docker ağına bağlanan ENG web ve Label Studio.
+eng-pc12.dalli-kaktus.tr {
+    encode zstd gzip
+    import security_headers
+    import access_log
+    request_body {
+        max_size 2GB
+    }
+    reverse_proxy eng-pc12-web:8000
+}
+
+labelstudio.dalli-kaktus.tr {
+    encode zstd gzip
+    import security_headers
+    import access_log
+    request_body {
+        max_size 2GB
+    }
+    reverse_proxy eng-pc12-labelstudio:8080
+}
