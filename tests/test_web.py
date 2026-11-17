@@ -110,6 +110,17 @@ def test_login_required(env):
     assert "err=" in bad.headers["location"]
 
 
+def test_help_requires_login_and_shows_team_workflow(env):
+    anon = TestClient(env.app)
+    r = anon.get("/help", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/login")
+    r = env.client.get("/help")
+    assert r.status_code == 200
+    for text in ("Ekip kullanım rehberi", "Yerel çalıştırıcılar", "Submit", "Rapor oluştur", "henüz harici yedek yok"):
+        assert text in r.text
+    assert 'href="/help"' in env.client.get("/").text
+
+
 def test_full_flow(env):
     c, ls = env.client, env.ls
     # veri seti = Label Studio projesi

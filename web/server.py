@@ -164,6 +164,10 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
             "FROM datasets d LEFT JOIN users u ON u.id = d.owner_id ORDER BY d.id DESC")
         return page(request, "home.html", u, datasets=datasets, runners=runners_view(), jobs=db.jobs(limit=10))
 
+    @app.get("/help", response_class=HTMLResponse)
+    def help_page(request: Request):
+        return page(request, "help.html", user_of(request))
+
     @app.post("/datasets")
     def create_dataset(request: Request, name: str = Form(...)):
         u = user_of(request)

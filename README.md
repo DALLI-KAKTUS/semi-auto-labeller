@@ -44,6 +44,8 @@ scripts/run_web.sh                 # http://127.0.0.1:8000
 ```
 
 Web uygulamasına giriş yapın; bir veri seti oluşturun (Label Studio'da proje açar), görüntüleri sürükleyip bırakın.
+Ekip üyeleri için giriş sonrası üst menüde **Kullanım rehberi** (`/help`) bulunur: hesaplar, yerel çalıştırıcı,
+ön etiketleme, insan kontrolü, rapor ve veri güvenliği adımlarını anlatır.
 Web'deki **Yerel çalıştırıcılar** sayfasından bir anahtar oluşturun; kendi bilgisayarınızda:
 
 ```sh
@@ -92,9 +94,9 @@ docker compose ps
 `/opt/web-gateway/config/sites/eng-pc12.caddy` konumuna koyup ortak gateway'de Caddy yapılandırmasını doğrulayın ve
 yeniden yükleyin. Bu compose yalnız web ve Label Studio'yu `web-gateway` ağına bağlar; PostgreSQL iç ağda kalır.
 
-**Bu makinede Docker kurulu olmadığından Compose imajı burada çalıştırılamadı.** Gerçek Label Studio 1.23.2 ile web
-sunucusu ve yerel çalıştırıcı yerelde uçtan uca test edildi. Sunucunuzda ilk dağıtımdan sonra `docker compose logs -f`
-ve bir deneme veri seti ile bağlantıyı doğrulayın. Sunucuya yalnız 80/443 açın; 8000/8080/5432 dışarı verilmez.
+VPS dağıtımı (ortak Caddy, HTTPS, üretim uWSGI) ve Mac'teki yerel çalıştırıcıyla sentetik görüntünün sunucu üzerinden
+Label Studio'ya ön etiketlenmesi doğrulandı. Sunucuya yalnız 80/443 açın; 8000/8080/5432 dışarı verilmez.
+Gerçek PC12 fotoğraflarıyla insan kontrolü ayrıca sınanmalı; yeni Docker volume'ları için harici yedek henüz yok.
 
 ## TUI ve CLI (eskisi gibi)
 
@@ -138,7 +140,7 @@ TUI/CLI'nin dosya yolu ve çalışma klasörü `config.yaml`'dadır; web uygulam
 .venv/bin/python -m pytest -q tests
 ```
 
-11 test: maske dönüşümü, eşleştirme, rapor, kullanıcı oturumu, yerel Python eklenti modeli ile web/çalıştırıcı uçtan
+12 test: maske dönüşümü, eşleştirme, rapor, kullanıcı oturumu, kullanım rehberi erişimi, yerel Python eklenti modeli ile web/çalıştırıcı uçtan
 uca, web'den ONNX yükleme/çalıştırıcı indirme, iptal ve kötü anahtar. Lite_v8 ağırlığı için önceki CAMEX çıkarımının
 maskeleri 768×512, 1920×1080 ve 2× fotoğrafta **piksel piksel aynı** çıktı (ONNX dışa aktarımı da aynı maskeleri
 verdi). Gerçek Label Studio 1.23.2 ile PNG, 16-bit TIFF, büyük görüntü, ön etiket, insan etiketi, rapor, bindirme ve
