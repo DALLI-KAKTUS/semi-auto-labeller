@@ -1,70 +1,254 @@
 {% extends "base.html" %}
 {% from "_ui.html" import icon %}
 {% block title %}Kullanım rehberi · ENG label app{% endblock %}
+
+{# çizimlerde kullanılan küçük parçalar #}
+{% macro pin(n) %}<span class="gd-pin">{{ n }}</span>{% endmacro %}
+{% macro arrow(cls="") %}<svg class="gd-arrow {{ cls }}" viewBox="0 0 60 24" aria-hidden="true"><path d="M2 12h50"/><path d="m44 4 10 8-10 8"/></svg>{% endmacro %}
+{% macro win(url) %}<div class="gd-win"><div class="gd-bar"><i></i><i></i><i></i><span>{{ url }}</span></div><div class="gd-body">{{ caller() }}</div></div>{% endmacro %}
+
 {% block content %}
 <header class="page-head">
   <div>
-    <h1>Ekip kullanım rehberi</h1>
-    <p class="sub">Görüntü yükle → kendi bilgisayarında modelle ön etiketle → Label Studio'da düzelt → karşılaştır ve indir.</p>
+    <h1>Kullanım rehberi</h1>
+    <p class="sub">Görüntülerinizi yükleyip modelle ön etiketlemek, Label Studio'da düzeltmek ve sonucu indirmek için
+      adımları sırayla izleyin. Her adımda ekranda nereye basacağınız işaretli.</p>
   </div>
 </header>
 
-<ol class="flow wide">
-  <li><a href="#h1"><span>1</span>Hesap ve veri seti</a></li><li><a href="#h2"><span>2</span>Yerel çalıştırıcı ve model</a></li>
-  <li><a href="#h3"><span>3</span>Ön etiket ve insan kontrolü</a></li><li><a href="#h4"><span>4</span>Rapor ve dışa aktarma</a></li>
-</ol>
-
-<div class="grid2 prose">
-<section class="card" id="h1">
-  <div class="card-head"><h2><span class="step">1</span> Hesap ve veri seti</h2></div>
-  <p>Bu web uygulaması ve <a href="{{ ls_url }}" target="_blank" rel="noopener">Label Studio ↗</a> için <b>ayrı hesaplar</b>
-    gerekir. Web hesabını yöneticiniz oluşturur; Label Studio hesabı için kuruluş daveti isteyin. Parolanızı
-    <a href="/account">hesabım</a> sayfasından değiştirin.</p>
-  <p><a href="/">Veri setleri</a> sayfasında ad verip yeni veri seti oluşturun (Label Studio'da otomatik proje açılır).
-    Veri setinin <b>Görüntüler</b> bölümündeki yükleme alanına PNG, JPG, TIFF veya CZI dosyalarını bırakın. TIFF/CZI'nin görüntülenebilir
-    PNG kopyası Label Studio'ya gider, model özgün dosyayı kullanır. Yükleme başarısızsa veri setindeki
-    <b>Tekrar dene</b> seçeneğini kullanın.</p>
+<section class="card gd-overview" aria-label="Sistem nasıl çalışır">
+  <div class="gd-node"><span class="gd-ic">{{ icon("user") }}</span><b>Siz</b><small>tarayıcıdan yönetirsiniz</small></div>
+  {{ arrow() }}
+  <div class="gd-node"><span class="gd-ic">{{ icon("layers") }}</span><b>ENG web</b><small>görüntüler ve işler burada</small></div>
+  <div class="gd-twoway">{{ arrow() }}{{ arrow("back") }}</div>
+  <div class="gd-node accent"><span class="gd-ic">{{ icon("cpu") }}</span><b>Çalıştırıcı</b><small>sizin bilgisayarınız, model burada çalışır</small></div>
+  {{ arrow() }}
+  <div class="gd-node"><span class="gd-ic">{{ icon("eye") }}</span><b>Label Studio</b><small>insan ön etiketi düzeltir</small></div>
+  {{ arrow() }}
+  <div class="gd-node"><span class="gd-ic">{{ icon("chart") }}</span><b>Rapor ve indirme</b><small>model ile insan karşılaştırılır</small></div>
 </section>
 
-<section class="card" id="h2">
-  <div class="card-head"><h2><span class="step">2</span> Yerel çalıştırıcı ve model</h2></div>
-  <p>Model VPS'te değil, çalıştırıcının açık olduğu <b>kendi bilgisayarınızda</b> çalışır.
-    <a href="/runners">Yerel çalıştırıcılar</a> sayfasından paketi indirip açın, macOS'ta
-    <code>ENG-Calistirici.command</code>, Windows'ta <code>ENG-Calistirici.bat</code> dosyasına çift tıklayın. İlk
-    açılışta Python ortamı kendiliğinden kurulur ve tarayıcıda bir onay sayfası açılır: kodun çalıştırıcı penceresindekiyle
-    aynı olduğunu kontrol edip <b>Onayla</b>'ya basın. Anahtar kopyalamanız gerekmez; sonraki açılışlarda yalnız çift
-    tıklamak yeter. İş bitene kadar pencereyi açık bırakın. Bilgisayarınızda gelen bağlantı/port açmanız gerekmez.</p>
-  <ul>
-    <li><b>Ağırlık bilgisayarda kalsın:</b> ağırlık dosyasını (ör. <code>lite_net.pt</code>) paketteki
-      <code>modeller/</code> klasörüne koyun; çalıştırıcı açılırken bulur. Örnek ağırlık indirme paketinde bulunmaz.</li>
-    <li><b>Modeli web'e yükleyin:</b> veri setindeki <b>Yeni model yükle</b> alanına JSON model kartı ve
-      ONNX/PT/PTH ağırlığını yükleyin. Bu dosyalar sunucuda saklanır ve iş sırasında yerel çalıştırıcıya indirilir.
-      Güvenlik için web'den yalnız ONNX ve smp (yalnız tensör) modelleri kabul edilir.</li>
-  </ul>
-  <p class="hint">{{ icon("info") }} Çalıştırıcı çevrimdışı görünüyorsa penceresini ve bağlantıyı kontrol edin.
-    Çalıştırıcıyı web'den silerseniz bağlantısı geçersiz olur; bir sonraki açılışta yeniden onay ister. Onay sayfasını
-    siz başlatmadıysanız <b>Reddet</b>'e basın.</p>
-</section>
+<div class="gd" id="rehber">
+  <nav class="gd-nav card" aria-label="Adımlar">
+    <div class="gd-progress"><span>Adım <b class="gd-cur">1</b> / 8</span><div class="bar"><span class="gd-fill"></span></div></div>
+    <ol>
+      <li><a href="#adim-1"><span>1</span>Hesaplarınız</a></li>
+      <li><a href="#adim-2"><span>2</span>Veri seti oluşturun</a></li>
+      <li><a href="#adim-3"><span>3</span>Görüntüleri yükleyin</a></li>
+      <li><a href="#adim-4"><span>4</span>Bilgisayarınızı bağlayın</a></li>
+      <li><a href="#adim-5"><span>5</span>Modeli hazırlayın</a></li>
+      <li><a href="#adim-6"><span>6</span>Ön etiketlemeyi başlatın</a></li>
+      <li><a href="#adim-7"><span>7</span>Label Studio'da düzeltin</a></li>
+      <li><a href="#adim-8"><span>8</span>Rapor ve indirme</a></li>
+    </ol>
+  </nav>
 
-<section class="card" id="h3">
-  <div class="card-head"><h2><span class="step">3</span> Ön etiket ve insan kontrolü</h2></div>
-  <p>Veri setinde <b>Modelle ön etiketle</b> bölümünden çalıştırıcı/model, kapsam ve güven eşiği seçip
-    <b>Ön etiketlemeyi başlat</b> düğmesine basın. İşin durumunu aynı sayfadan takip edin. Modelin sonucu
-    Label Studio'ya <b>tahmin/ön etiket</b> olarak gelir; henüz insan etiketi sayılmaz.</p>
-  <p><b>Projeyi aç ↗</b> veya görüntü satırındaki görev bağlantısıyla Label Studio'ya gidin. Ön etiketleri kontrol edin,
-    eksik/fazla hücreleri ve nörit/grup alanlarını düzeltin; işi bitirince <b>Submit</b> edin. Karşılaştırma raporuna
-    yalnızca gönderilmiş insan etiketleri girer.</p>
-</section>
+  <div class="gd-steps">
+  {# ------------------------------------------------------------------ 1 #}
+  <section class="card gd-step" id="adim-1">
+    <div class="gd-head"><span class="step">1</span><div><h2>Hesaplarınız</h2><p class="muted">İki ayrı hesap gerekir; bir kez yapılır.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        <div class="gd-accounts">
+          <div class="gd-acc">{{ icon("layers") }}<b>ENG web</b><small>Hesabı <b>yönetici</b> açar.<br>Görüntü, model, iş.</small></div>
+          <div class="gd-plus">+</div>
+          <div class="gd-acc">{{ icon("eye") }}<b>Label Studio</b><small>Yöneticiden <b>davet bağlantısı</b> isteyin.<br>Etiket düzeltme.</small></div>
+        </div>
+      </div>
+      <ol class="gd-do">
+        <li>Yöneticinizden <b>ENG web</b> kullanıcı adı ve parolası alın, giriş yapın.</li>
+        <li>Parolanızı <a href="/account">Hesabım</a> sayfasından değiştirin.</li>
+        <li><a href="{{ ls_url }}" target="_blank" rel="noopener">Label Studio ↗</a> için davet bağlantısıyla kaydolun.
+          İki hesabın parolası ayrıdır.</li>
+      </ol>
+    </div>
+  </section>
 
-<section class="card" id="h4">
-  <div class="card-head"><h2><span class="step">4</span> Rapor ve dışa aktarma</h2></div>
-  <p>Veri setindeki <b>Model ile insanı karşılaştır</b> bölümünde model sürümünü seçin (boşsa her görevin en son
-    tahmini) ve <b>Rapor oluştur</b> düğmesine basın. Raporda hücre F1/IoU, nörit/grup Dice ve görüntü üstünde
-    model–insan farkları bulunur; Markdown ve JSON indirme bağlantıları vardır.</p>
-  <p><b>Dışa aktar → Zip indir</b> ile insan etiketlerini maske, COCO, YOLO-seg ve Label Studio JSON biçimlerinde
-    alabilirsiniz. YOLO-seg ince nöritleri içermez. Gerçek PC12 verilerinde model çıktısını mutlaka insan gözüyle doğrulayın.</p>
-</section>
+  {# ------------------------------------------------------------------ 2 #}
+  <section class="card gd-step" id="adim-2">
+    <div class="gd-head"><span class="step">2</span><div><h2>Veri seti oluşturun</h2><p class="muted">Veri seti = bir grup görüntü. Label Studio'da projesi kendiliğinden açılır.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        {% call win("eng-pc12 / Veri setleri") %}
+          <div class="gd-row"><span class="gd-input">PC12 – Kasım deneyi</span>{{ pin(1) }}<span class="gd-btn hl">{{ icon("plus") }} Oluştur</span>{{ pin(2) }}</div>
+          <div class="gd-list"><span>{{ icon("layers") }} NEW DATASET <em>241 görüntü</em></span><span>{{ icon("layers") }} Kurulum testi <em>1 görüntü</em></span></div>
+        {% endcall %}
+      </div>
+      <ol class="gd-do">
+        <li>Sol menüden <a href="/">Veri setleri</a>'ne gidin ve kutuya bir ad yazın.</li>
+        <li><b>Oluştur</b>'a basın; veri setinin sayfası açılır.</li>
+      </ol>
+    </div>
+    <p class="gd-tip">{{ icon("info") }}<span>Aynı görüntüleri başka bir modelle sıfırdan etiketlemek isterseniz yeniden yüklemeyin:
+      veri seti sayfasının altındaki <b>Veri setini kopyala</b> görüntüleri etiketsiz kopyalar.</span></p>
+  </section>
+
+  {# ------------------------------------------------------------------ 3 #}
+  <section class="card gd-step" id="adim-3">
+    <div class="gd-head"><span class="step">3</span><div><h2>Görüntüleri yükleyin</h2><p class="muted">PNG, JPG, TIFF ya da CZI.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        <div class="gd-drag">
+          <div class="gd-files"><span>{{ icon("file") }}Snap-18519.czi</span><span>{{ icon("file") }}Snap-18520.czi</span><span>{{ icon("file") }}…</span></div>
+          {{ arrow("down") }}
+          <div class="gd-drop hl">{{ icon("upload") }}<b>Dosyaları buraya bırakın</b>{{ pin(1) }}</div>
+          <div class="gd-upl"><span>Snap-18519.czi</span><div class="bar"><span style="width:100%"></span></div><em class="ok">tamam</em></div>
+          <div class="gd-upl"><span>Snap-18520.czi</span><div class="bar"><span style="width:55%"></span></div><em>yükleniyor</em>{{ pin(2) }}</div>
+        </div>
+      </div>
+      <ol class="gd-do">
+        <li>Veri seti sayfasındaki <b>Görüntüler</b> bölümünde yükleme alanına dosyaları sürükleyin (ya da tıklayıp seçin).</li>
+        <li>Her dosyanın çubuğu dolup <b>tamam</b> yazana kadar sayfayı kapatmayın. Bitince sayfa yenilenir.</li>
+      </ol>
+    </div>
+    <p class="gd-tip">{{ icon("info") }}<span>TIFF/CZI dosyalarının görüntülenebilir PNG kopyası Label Studio'ya gider; model özgün dosyayı
+      kullanır. Bir görüntü Label Studio'ya gidemezse sayfanın üstünde <b>Tekrar dene</b> çıkar.</span></p>
+  </section>
+
+  {# ------------------------------------------------------------------ 4 #}
+  <section class="card gd-step" id="adim-4">
+    <div class="gd-head"><span class="step">4</span><div><h2>Bilgisayarınızı bağlayın</h2><p class="muted">Model sunucuda değil, <b>sizin bilgisayarınızda</b> çalışır. Bir kez yapılır.</p></div></div>
+    <div class="gd-chain">
+      <div class="gd-mini">{{ pin("a") }}<div class="gd-mini-art">{{ icon("download") }}<code>eng-calistirici.zip</code></div>
+        <p><a href="/runners">Yerel çalıştırıcılar</a> sayfasından <b>Çalıştırıcıyı indir</b>, zip'i açın.</p></div>
+      {{ arrow() }}
+      <div class="gd-mini">{{ pin("b") }}<div class="gd-mini-art gd-folder"><span>📁 eng-calistirici</span><span class="in">📁 modeller</span><span class="in2 hl-text">lite_net.pt</span></div>
+        <p>Model dosyanızı <code>modeller/</code> klasörüne koyun. (Web'e yüklenen modelde gerekmez.)</p></div>
+      {{ arrow() }}
+      <div class="gd-mini">{{ pin("c") }}<div class="gd-mini-art gd-term"><span>$ ENG-Calistirici</span><span>Python ortamı hazırlanıyor…</span><span>Kod: <b class="code">ABCD-EFGH</b></span></div>
+        <p><b>Çift tıklayın:</b> macOS <code>ENG-Calistirici.command</code>, Windows <code>ENG-Calistirici.bat</code>.</p></div>
+      {{ arrow() }}
+      <div class="gd-mini">{{ pin("d") }}<div class="gd-mini-art gd-approve"><span class="code">ABCD-EFGH</span><span class="gd-btn hl">{{ icon("tick") }} Onayla</span></div>
+        <p>Açılan sayfada kod <b>aynıysa</b> <b>Onayla</b>'ya basın.</p></div>
+    </div>
+    <div class="gd-same">{{ icon("eye") }} <span><b>c</b> penceresindeki kod ile <b>d</b> sayfasındaki kod aynı olmalı. Siz başlatmadığınız bir istekse <b>Reddet</b>'e basın.</span></div>
+    <ul class="gd-notes">
+      <li>İlk açılışta kurulum birkaç dakika sürer. Sonraki açılışlarda yalnız çift tıklamak yeter, onay sorulmaz.</li>
+      <li>İş bitene kadar pencereyi <b>açık bırakın</b>. Kapanırsa yeniden açın; iş kaldığı yerden sürer.</li>
+      <li>Onay sayfasındaki <b>“Ekipteki herkes bu bilgisayarda iş çalıştırabilsin”</b> işaretsizse bu bilgisayara yalnız siz iş
+        verebilirsiniz. Sonradan <a href="/runners">Yerel çalıştırıcılar</a> sayfasından değiştirebilirsiniz.</li>
+      <li>macOS “açılamıyor” derse dosyaya sağ tıklayıp <b>Aç</b>; Windows “bilgisayarınızı korudu” derse
+        <b>Ek bilgi › Yine de çalıştır</b>.</li>
+    </ul>
+  </section>
+
+  {# ------------------------------------------------------------------ 5 #}
+  <section class="card gd-step" id="adim-5">
+    <div class="gd-head"><span class="step">5</span><div><h2>Modeli hazırlayın</h2><p class="muted">İki yoldan birini seçin.</p></div></div>
+    <div class="gd-fork">
+      <div class="gd-path">
+        <div class="gd-path-h">{{ icon("lock") }} <b>A) Model bilgisayarımda kalsın</b> <span class="chip">önerilen</span></div>
+        <div class="gd-mini-art gd-folder"><span>📁 modeller</span><span class="in hl-text">lite_net.pt</span></div>
+        <p>4. adımda dosyayı <code>modeller/</code> klasörüne koyduysanız hazırsınız. Model sunucuya hiç gitmez.
+          Çalıştırıcıyı açınca model listede görünür.</p>
+      </div>
+      <div class="gd-or">ya da</div>
+      <div class="gd-path">
+        <div class="gd-path-h">{{ icon("upload") }} <b>B) Modeli web'e yükle</b></div>
+        {% call win("Veri seti › Yeni model yükle") %}
+          <div class="gd-row"><span class="gd-input">{{ icon("file") }} lite_v8.json</span><span class="gd-input">{{ icon("file") }} lite_net.pt</span></div>
+          <div class="gd-upl"><span>%42 · 54 / 128 MB</span><div class="bar"><span style="width:42%"></span></div></div>
+        {% endcall %}
+        <p>Veri setinde <b>Yeni model yükle</b>'yi açın: model kartı (<code>.json</code>) + ağırlık (<code>.onnx</code>/<code>.pt</code>).
+          Çubuk dolana kadar bekleyin. Çalıştırıcı modeli iş başlarken kendisi indirir.</p>
+      </div>
+    </div>
+    <p class="gd-tip">{{ icon("info") }}<span>PC12 modeli için kart pakette hazır: <code>models/lite_v8.json</code>. Güvenlik için web'e
+      yalnız ONNX ve smp modelleri yüklenebilir.</span></p>
+  </section>
+
+  {# ------------------------------------------------------------------ 6 #}
+  <section class="card gd-step" id="adim-6">
+    <div class="gd-head"><span class="step">6</span><div><h2>Ön etiketlemeyi başlatın</h2><p class="muted">Model hücreleri, nöritleri ve grupları önceden işaretler.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        {% call win("Veri seti › Modelle ön etiketle") %}
+          <div class="gd-field"><small>Model (yerel çalıştırıcıda)</small><span class="gd-input sel">lab-pc · lite_v8 (mps)</span>{{ pin(1) }}</div>
+          <div class="gd-row"><div class="gd-field"><small>Kapsam</small><span class="gd-input sel">ön etiketi olmayanlar</span></div>
+            <div class="gd-field"><small>Güven eşiği</small><span class="gd-input">0</span>{{ pin(2) }}</div></div>
+          <div class="gd-row"><span class="gd-btn hl">{{ icon("play") }} Ön etiketlemeyi başlat</span>{{ pin(3) }}</div>
+          <div class="gd-upl"><span>çalışıyor 87 / 241</span><div class="bar"><span style="width:36%"></span></div></div>
+        {% endcall %}
+      </div>
+      <ol class="gd-do">
+        <li>Çalıştırıcı ve modeli seçin. Yanında <b>çevrimdışı</b> yazıyorsa çalıştırıcı penceresi kapalıdır.</li>
+        <li><b>Güven eşiği</b>: 0 bırakırsanız modelin bulduğu tüm hücreler gelir. Yükseltirseniz yalnız emin olduğu hücreler gelir.</li>
+        <li><b>Ön etiketlemeyi başlat</b>'a basın. İlerleme aynı sayfadaki <b>İşler</b> listesinde görünür.</li>
+      </ol>
+    </div>
+    <p class="gd-tip">{{ icon("info") }}<span>Silmek çizmekten kolaydır: düşük eşikle başlayın. Mac'te model GPU'da (<code>mps</code>)
+      çalışır, görüntü başına birkaç saniye sürer.</span></p>
+  </section>
+
+  {# ------------------------------------------------------------------ 7 #}
+  <section class="card gd-step" id="adim-7">
+    <div class="gd-head"><span class="step">7</span><div><h2>Label Studio'da düzeltin</h2><p class="muted">Ön etiket henüz insan etiketi sayılmaz; siz onaylayınca sayılır.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        {% call win("Label Studio › görev") %}
+          <div class="gd-ls">
+            <div class="gd-tools"><span class="t cell">Cell</span><span class="t neu">Neurite</span><span class="t grp">Group</span>{{ pin(1) }}</div>
+            <div class="gd-canvas">
+              <i class="c" style="left:14%;top:22%"></i><i class="c" style="left:40%;top:52%"></i><i class="c x" style="left:66%;top:20%"></i>
+              <i class="c" style="left:72%;top:62%"></i><span class="n" style="left:20%;top:40%;width:46%;transform:rotate(14deg)"></span>
+              <span class="gd-callout" style="left:58%;top:4%">fazla → sil</span>{{ pin(2) }}
+            </div>
+            <div class="gd-row end"><span class="gd-btn hl">Submit</span>{{ pin(3) }}</div>
+          </div>
+        {% endcall %}
+      </div>
+      <ol class="gd-do">
+        <li>Veri setinde <b>Projeyi aç ↗</b>'a ya da görüntünün satırındaki bağlantıya basın. Soldaki etiketle (Cell, Neurite, Group) çizin.</li>
+        <li>Fazla hücreleri silin, eksikleri çizin, nörit ve grup alanlarını düzeltin.</li>
+        <li><b>Submit</b>'e basın. Raporlara yalnız gönderilmiş etiketler girer.</li>
+      </ol>
+    </div>
+  </section>
+
+  {# ------------------------------------------------------------------ 8 #}
+  <section class="card gd-step" id="adim-8">
+    <div class="gd-head"><span class="step">8</span><div><h2>Rapor ve indirme</h2><p class="muted">Modelin ne kadar iyi olduğunu görün, etiketleri indirin.</p></div></div>
+    <div class="gd-grid">
+      <div class="gd-art">
+        {% call win("Veri seti › Model ile insanı karşılaştır") %}
+          <div class="gd-row"><span class="gd-input sel">lite_v8-c74008d1</span><span class="gd-btn hl">{{ icon("chart") }} Rapor oluştur</span>{{ pin(1) }}</div>
+          <div class="gd-metrics">
+            <div><small>hücre F1</small><div class="bar"><span style="width:84%"></span></div><b>0.84</b></div>
+            <div><small>nörit Dice</small><div class="bar"><span style="width:71%"></span></div><b>0.71</b></div>
+            <div><small>grup Dice</small><div class="bar"><span style="width:77%"></span></div><b>0.77</b></div>
+          </div>
+          <div class="gd-row"><span class="chip">maske</span><span class="chip">COCO</span><span class="chip">YOLO</span><span class="chip">JSON</span><span class="gd-btn sec">{{ icon("download") }} Zip indir</span>{{ pin(2) }}</div>
+        {% endcall %}
+      </div>
+      <ol class="gd-do">
+        <li><b>Model ile insanı karşılaştır</b>'da model sürümünü seçip <b>Rapor oluştur</b>'a basın. Raporda puanlar ve görüntü üstünde
+          model–insan farkları vardır; Markdown/JSON olarak indirilebilir.</li>
+        <li><b>Dışa aktar</b>'da biçimleri seçip <b>Zip indir</b> ile insan etiketlerini alın. YOLO-seg ince nöritleri içermez.</li>
+      </ol>
+    </div>
+    <p class="gd-tip ok">{{ icon("check") }}<span>Bitti! Yeni görüntüler için 3. adımdan, yeni bir model için 5. adımdan devam edin.</span></p>
+  </section>
+  </div>
 </div>
+
+<div class="gd-pager" hidden>
+  <button class="btn secondary gd-prev">{{ icon("chevron") }} Önceki</button>
+  <button class="btn gd-next">Sonraki {{ icon("arrow") }}</button>
+</div>
+
+<section class="card gd-faq">
+  <div class="card-head"><h2>{{ icon("info") }} Sık sorulanlar</h2></div>
+  <details><summary>Çalıştırıcım “çevrimdışı” görünüyor.</summary><p>Bilgisayardaki çalıştırıcı penceresi kapalı ya da internet yok. Pencereyi yeniden açın
+    (çift tıklayın); birkaç saniyede çevrimiçi olur. Bilgisayar uykuya geçerse de çevrimdışı görünür.</p></details>
+  <details><summary>Başkasının bilgisayarını listede göremiyorum.</summary><p>Çalıştırıcılar varsayılan olarak yalnız sahibine açıktır. Sahibi
+    <a href="/runners">Yerel çalıştırıcılar</a> sayfasında <b>Ekiple paylaş</b> derse herkes kullanabilir.</p></details>
+  <details><summary>Lab bilgisayarını uzaktan kullanabilir miyim?</summary><p>Evet: bir kez bağlanıp penceresi açık kaldığı sürece, kendi
+    bilgisayarınızdan web üzerinden o bilgisayara iş verebilirsiniz. Pencere kapanırsa yerinde yeniden açılması gerekir.</p></details>
+  <details><summary>Güven eşiği neyi değiştirir?</summary><p>Model her hücre için 0–1 arası bir güven puanı verir; eşiğin altındakiler
+    Label Studio'ya gönderilmez. Yalnız hücreleri etkiler, nörit ve grupları etkilemez.</p></details>
+  <details><summary>Bilgisayarı hesabımdan nasıl ayırırım?</summary><p><a href="/runners">Yerel çalıştırıcılar</a> sayfasında çalıştırıcıyı silin;
+    anahtarı geçersiz olur ve bir sonraki açılışta yeniden onay ister.</p></details>
+</section>
 
 <section class="card callout warn">
   <div class="card-head"><h2>{{ icon("alert") }} Ekip için önemli notlar</h2></div>

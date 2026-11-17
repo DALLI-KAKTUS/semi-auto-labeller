@@ -20,6 +20,7 @@ import json
 import os
 import platform
 import shlex
+import signal
 import socket
 import sys
 import tempfile
@@ -287,7 +288,21 @@ class Runner:
         self.http.post(f"/api/runner/jobs/{jid}/finish", json={})
         log(f"iş {jid}: bitti")
 
+    def bye(self) -> None:
+        """Kapanırken sunucuya haber ver: web'de hemen çevrimdışı görünür."""
+        try:
+            self.http.post("/api/runner/bye", timeout=3)
+        except Exception:
+            pass
+
     def loop(self, once: bool = False) -> None:
+        try:
+            self._loop(once)
+        except KeyboardInterrupt:
+            self.bye()
+            raise
+
+    def _loop(self, once: bool = False) -> None:
         log(f"sunucu {self.server}; modeller: " + ", ".join(f"{a['name']} ({a['device']})" for a in self.ads()))
         delay = 5
         while True:
@@ -378,7 +393,15 @@ def local_models(a, settings: dict) -> dict:
     return models
 
 
+def _interrupt(_sig, _frame):
+    raise KeyboardInterrupt
+
+
 def main(argv=None) -> int:
+    # pencere kapatılınca (SIGHUP) ya da durdurulunca (SIGTERM) da düzgün kapan ve sunucuya haber ver
+    for name in ("SIGHUP", "SIGTERM"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), _interrupt)
     ap = argparse.ArgumentParser(prog="python -m runner", description=__doc__.split("\n")[0])
     ap.add_argument("--server", default=os.environ.get("ENG_SERVER"),
                     help="web uygulamasının adresi (ENG_SERVER; indirilen pakette hazır gelir)")

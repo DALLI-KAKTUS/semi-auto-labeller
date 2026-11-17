@@ -122,7 +122,7 @@ def test_help_requires_login_and_shows_team_workflow(env):
     assert r.status_code == 303 and r.headers["location"].startswith("/login")
     r = env.client.get("/help")
     assert r.status_code == 200
-    for text in ("Ekip kullanım rehberi", "Yerel çalıştırıcılar", "Submit", "Rapor oluştur", "henüz harici yedek yok"):
+    for text in ("Kullanım rehberi", "Yerel çalıştırıcılar", "Submit", "Rapor oluştur", "henüz harici yedek yok"):
         assert text in r.text
     assert 'href="/help"' in env.client.get("/").text
 
@@ -451,3 +451,17 @@ def test_copy_dataset_copies_images_without_labels(env):
     assert not env.ls.tasks_[img["ls_task"]].annotations and env.ls.tasks_[img["ls_task"]].predictions == []
     page = env.client.get(f"/datasets/{new}").text
     assert "a.png" in page and "kopya" in page
+
+
+def test_runner_status_api_and_bye(env):
+    from web import auth
+
+    rid, token = auth.create_runner(env.app.state.db, 1, "pc")
+    rc = TestClient(env.app, headers={"Authorization": f"Bearer {token}"})
+    rc.post("/api/runner/poll", json={"models": [{"name": "m", "version": "1", "device": "cpu"}], "wait": 0})
+    st = env.client.get("/api/runners").json()["runners"]
+    assert st == [{"id": rid, "online": True, "ago": "az önce", "models": ["m"]}]
+    assert rc.post("/api/runner/bye").status_code == 200
+    assert env.client.get("/api/runners").json()["runners"][0]["online"] is False
+    assert TestClient(env.app).get("/api/runners", follow_redirects=False).status_code in (303, 401)
+    assert f'data-runner="{rid}"' in env.client.get("/runners").text

@@ -135,10 +135,10 @@
       <label class="field"><span>Model (yerel çalıştırıcıda)</span>
         <select name="model" required>
           {% for r, m in models %}
-          <option value="{{ r.id }}|{{ m.name }}">{{ r.name }} · {{ m.name }} ({{ m.device }}){% if not r.online %} · çevrimdışı{% endif %}</option>
+          <option value="{{ r.id }}|{{ m.name }}" data-runner="{{ r.id }}" data-label="{{ r.name }} · {{ m.name }} ({{ m.device }})">{{ r.name }} · {{ m.name }} ({{ m.device }}){% if not r.online %} · çevrimdışı{% endif %}</option>
           {% endfor %}
           {% for r in runners %}{% for m in uploaded_models %}
-          <option value="{{ r.id }}|#{{ m.id }}">{{ r.name }} · {{ m.name }} (web'e yüklendi, çalıştırıcı indirecek){% if not r.online %} · çevrimdışı{% endif %}</option>
+          <option value="{{ r.id }}|#{{ m.id }}" data-runner="{{ r.id }}" data-label="{{ r.name }} · {{ m.name }} (web'e yüklendi, çalıştırıcı indirecek)">{{ r.name }} · {{ m.name }} (web'e yüklendi, çalıştırıcı indirecek){% if not r.online %} · çevrimdışı{% endif %}</option>
           {% endfor %}{% endfor %}
         </select></label>
       <div class="fields-2">

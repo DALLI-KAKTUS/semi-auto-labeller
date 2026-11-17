@@ -32,7 +32,7 @@ from .service import Service, UserError, report_markdown
 from .settings import Settings
 
 HERE = Path(__file__).resolve().parent
-ONLINE_SECONDS = 60          # bu süre içinde soran çalıştırıcı çevrimiçi sayılır
+ONLINE_SECONDS = 45          # bu süre içinde soran çalıştırıcı çevrimiçi sayılır (uzun sorgu 20 s)
 POLL_SECONDS = 20            # uzun sorgu: iş yoksa çalıştırıcının isteği bu kadar bekletilir
 PAIR_POLL_SECONDS = 2        # eşleştirmede çalıştırıcı onayı bu aralıkla sorar
 PUBLIC = ("/login", "/static/", "/healthz", "/api/runner/")
@@ -584,6 +584,20 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         status = "failed" if error or not done else "done"
         db.run("UPDATE jobs SET status = ?, error = ?, finished = ? WHERE id = ? AND status IN (?, ?)",
                status, error, now(), jid, *JOB_ACTIVE)
+
+    @app.post("/api/runner/bye")
+    def runner_bye(request: Request):
+        """Çalıştırıcı kapanırken haber verir; 45 s beklemeden çevrimdışı görünür."""
+        r = runner_of(request)
+        db.run("UPDATE runners SET last_seen = NULL WHERE id = ?", r["id"])
+        return {"ok": True}
+
+    @app.get("/api/runners")
+    def runners_status(request: Request):
+        """Sayfalardaki çevrimiçi göstergeleri için canlı durum."""
+        user_of(request)
+        return {"runners": [{"id": r["id"], "online": r["online"], "ago": _ago(r["last_seen"]),
+                             "models": [m.get("name") for m in r["models"]]} for r in runners_view()]}
 
     @app.post("/api/runner/poll")
     async def runner_poll(request: Request):

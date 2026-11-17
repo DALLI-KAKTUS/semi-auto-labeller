@@ -240,3 +240,70 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!e.target.closest("a, button, input, form")) location.href = tr.dataset.href;
   }));
 });
+
+// ---------------------------------------------------------------- kullanım rehberi: adım adım gösterim
+document.addEventListener("DOMContentLoaded", () => {
+  const gd = document.getElementById("rehber");
+  if (!gd) return;
+  const steps = [...gd.querySelectorAll(".gd-step")];
+  const links = [...gd.querySelectorAll(".gd-nav a")];
+  const pager = document.querySelector(".gd-pager");
+  const prev = pager.querySelector(".gd-prev"), next = pager.querySelector(".gd-next");
+  let cur = 0;
+  const show = (i, scroll) => {
+    cur = Math.max(0, Math.min(steps.length - 1, i));
+    steps.forEach((s, k) => s.classList.toggle("on", k === cur));
+    links.forEach((a, k) => { a.classList.toggle("active", k === cur); if (k < cur) a.classList.add("seen"); });
+    gd.querySelector(".gd-cur").textContent = cur + 1;
+    gd.querySelector(".gd-fill").style.width = `${(100 * (cur + 1)) / steps.length}%`;
+    prev.disabled = cur === 0;
+    next.hidden = cur === steps.length - 1;
+    history.replaceState(null, "", "#" + steps[cur].id);
+    if (scroll) gd.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  gd.classList.add("js");
+  pager.hidden = false;
+  links.forEach((a, k) => a.addEventListener("click", (e) => { e.preventDefault(); show(k, false); }));
+  prev.addEventListener("click", () => show(cur - 1, true));
+  next.addEventListener("click", () => show(cur + 1, true));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea, select")) return;
+    if (e.key === "ArrowRight") show(cur + 1, false);
+    if (e.key === "ArrowLeft") show(cur - 1, false);
+  });
+  const start = steps.findIndex((s) => "#" + s.id === location.hash);
+  show(start < 0 ? 0 : start, false);
+});
+
+// ---------------------------------------------------------------- çalıştırıcıların canlı çevrimiçi durumu
+document.addEventListener("DOMContentLoaded", () => {
+  if (!document.querySelector("[data-runner]")) return;
+  const table = document.querySelector("[data-runner-ids]");
+  const refresh = async () => {
+    if (document.hidden) return;
+    let body;
+    try {
+      const r = await fetch("/api/runners", { headers: { Accept: "application/json" } });
+      if (!r.ok) return;
+      body = await r.json();
+    } catch (_) { return; }
+    // çalıştırıcılar sayfasında yeni bağlanan/silinen çalıştırıcı varsa listeyi tazele (yazı yazılmıyorsa)
+    if (table && body.runners.map((x) => x.id).join(",") !== table.dataset.runnerIds &&
+        !document.activeElement.closest("input, textarea, select")) { location.reload(); return; }
+    for (const x of body.runners) {
+      const on = x.online ? "on" : "off";
+      document.querySelectorAll(`[data-runner="${x.id}"]`).forEach((node) => {
+        if (node.tagName === "OPTION") {
+          node.textContent = node.dataset.label + (x.online ? "" : " · çevrimdışı");
+          return;
+        }
+        node.querySelectorAll(".r-dot, .r-pill").forEach((d) => { d.classList.remove("on", "off"); d.classList.add(on); });
+        node.querySelectorAll(".r-dot").forEach((d) => { d.title = x.online ? "çevrimiçi" : "çevrimdışı"; });
+        node.querySelectorAll(".r-txt").forEach((t) => { t.textContent = x.online ? "çevrimiçi" : "çevrimdışı"; });
+        node.querySelectorAll(".r-ago").forEach((t) => { t.textContent = x.ago; });
+      });
+    }
+  };
+  setInterval(refresh, 5000);
+  document.addEventListener("visibilitychange", refresh);
+});

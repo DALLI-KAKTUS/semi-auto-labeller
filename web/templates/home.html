@@ -57,9 +57,9 @@
     {% if runners %}
     <ul class="runner-list">
       {% for r in runners %}
-      <li><span class="dot {{ 'on' if r.online else 'off' }}" title="{{ 'çevrimiçi' if r.online else 'çevrimdışı' }}"></span>
+      <li data-runner="{{ r.id }}"><span class="dot r-dot {{ 'on' if r.online else 'off' }}" title="{{ 'çevrimiçi' if r.online else 'çevrimdışı' }}"></span>
         <div><b>{{ r.name }}</b> <span class="muted">· {{ r.owner }}</span>
-          <div class="muted small">{{ r.models | map(attribute="name") | join(", ") or "model yok" }} · {{ r.last_seen | ago }}</div></div></li>
+          <div class="muted small">{{ r.models | map(attribute="name") | join(", ") or "model yok" }} · <span class="r-ago">{{ r.last_seen | ago }}</span></div></div></li>
       {% endfor %}
     </ul>
     {% else %}
