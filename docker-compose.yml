@@ -37,12 +37,13 @@ services:
       LABEL_STUDIO_CSRF_TRUSTED_ORIGINS: https://${LABEL_STUDIO_DOMAIN}
       LABEL_STUDIO_SESSION_COOKIE_SECURE: "1"
       LABEL_STUDIO_CSRF_COOKIE_SECURE: "1"
+      UWSGI_PROCESSES: "2"
       SECRET_KEY: ${LS_SECRET_KEY:?Set LS_SECRET_KEY in .env}
     volumes:
       - lsdata:/label-studio/data
     expose:
-      - "8080"
-    command: ["label-studio", "start", "--no-browser", "--port", "8080"]
+      - "8000"
+    command: ["label-studio-uwsgi"]
 
   web:
     build:
@@ -58,7 +59,7 @@ services:
       ENG_SECURE_COOKIES: "1"
       ENG_ADMIN_USERNAME: ${ENG_ADMIN_USERNAME:?Set ENG_ADMIN_USERNAME in .env}
       ENG_ADMIN_PASSWORD: ${ENG_ADMIN_PASSWORD:?Set ENG_ADMIN_PASSWORD in .env}
-      LABEL_STUDIO_URL: http://label-studio:8080
+      LABEL_STUDIO_URL: http://label-studio:8000
       LABEL_STUDIO_PUBLIC_URL: https://${LABEL_STUDIO_DOMAIN}
       LABEL_STUDIO_API_KEY: ${LS_API_KEY}
     volumes:

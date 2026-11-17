@@ -11,5 +11,5 @@
     request_body {
         max_size 2GB
     }
-    reverse_proxy label-studio:8080
+    reverse_proxy label-studio:8000
 }

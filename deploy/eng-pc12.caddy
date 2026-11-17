@@ -17,5 +17,5 @@ labelstudio.dalli-kaktus.tr {
     request_body {
         max_size 2GB
     }
-    reverse_proxy eng-pc12-labelstudio:8080
+    reverse_proxy eng-pc12-labelstudio:8000
 }
