@@ -67,7 +67,7 @@ modeller, PostgreSQL ve Label Studio etiketleri için). Yerel bilgisayarınızda
 ```sh
 cp .env.example .env
 # .env: ENG_DOMAIN, LABEL_STUDIO_DOMAIN ve parolaları/anahtarları kendi değerlerinizle doldurun.
-# POSTGRES_PASSWORD, LS_SECRET_KEY ve LS_API_KEY için ayrı ayrı `openssl rand -hex 32` kullanın.
+# POSTGRES_PASSWORD, LS_SECRET_KEY için `openssl rand -hex 32`, LS_API_KEY için `openssl rand -hex 20`.
 chmod 600 .env
 docker compose --profile standalone up -d --build   # yalnız 80/443 boşsa: bağımsız Caddy
 docker compose ps

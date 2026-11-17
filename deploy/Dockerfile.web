@@ -20,4 +20,4 @@ COPY labeling_config.xml ./labeling_config.xml
 RUN useradd --create-home --uid 10001 eng && mkdir -p /data && chown eng:eng /data
 USER eng
 EXPOSE 8000
-CMD ["uvicorn", "web.server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]
+CMD ["uvicorn", "web.server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]
