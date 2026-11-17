@@ -48,8 +48,6 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     svc = Service(s, db, ls_factory)
     if s.admin_username and s.admin_password and not db.one("SELECT id FROM users"):
         auth.create_user(db, s.admin_username, s.admin_password, admin=True)
-    if s.server_runner_token_file:
-        auth.ensure_server_runner(db, Path(s.server_runner_token_file))
 
     app = FastAPI(title="ENG label app", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
@@ -86,10 +84,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         return img
 
     def page(request: Request, name: str, user: dict, **ctx) -> HTMLResponse:
-        pending = (db.one("SELECT COUNT(*) AS n FROM users WHERE server_access = 'requested'")["n"]
-                   if user and user.get("admin") else 0)
         return tpl.TemplateResponse(request, name, {"user": user, "msg": request.query_params.get("msg"),
-                                                    "server_requests": pending,
                                                     "err": request.query_params.get("err"), **ctx})
 
     def back(url: str, msg: str | None = None, err: str | None = None) -> RedirectResponse:
@@ -105,17 +100,11 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         return rows
 
     def can_use(u: dict, r: dict) -> bool:
-        """Yerel çalıştırıcıya yalnız sahibi iş verebilir; sahibi paylaştıysa herkes (yönetici de istisna değil).
-        Sunucu çalıştırıcısını yönetici ve yöneticinin izin verdiği kullanıcılar kullanır."""
-        if r.get("kind") == "server":
-            return bool(u["admin"]) or u.get("server_access") == "approved"
+        """Çalıştırıcıya yalnız sahibi iş verebilir; sahibi paylaştıysa herkes (yönetici de istisna değil)."""
         return bool(r["shared"]) or r["user_id"] == u["id"]
 
     def usable_runners(u: dict) -> list[dict]:
         return [r for r in runners_view() if can_use(u, r)]
-
-    def server_runner() -> dict | None:
-        return next((r for r in runners_view() if r.get("kind") == "server"), None)
 
     def login_redirect(request: Request):
         if request.url.path.startswith("/api/"):
@@ -242,7 +231,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
                          "ORDER BY id DESC LIMIT 10", did)
         for r in reports:
             r["summary"] = json.loads(r["summary"])
-        return page(request, "dataset.html", u, ds=ds, images=images, stats=stats, ls_err=ls_err, copying=did in copying, server=server_runner(),
+        return page(request, "dataset.html", u, ds=ds, images=images, stats=stats, ls_err=ls_err, copying=did in copying,
                     project_link=svc.project_link(ds["ls_project"]), runners=usable_runners(u), jobs=db.jobs(did, 20),
                     reports=reports, versions=sorted({v for i in images for v in i["versions"]}),
                     formats=export.FORMATS, accept=",".join(C.IMAGE_EXT),
@@ -438,8 +427,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     @app.get("/runners", response_class=HTMLResponse)
     def runners_page(request: Request):
         u = user_of(request)
-        return page(request, "runners.html", u, runners=runners_view(), server_url=_server_url(request, s),
-                    server_ok=any(r["kind"] == "server" and can_use(u, r) for r in runners_view()))
+        return page(request, "runners.html", u, runners=runners_view(), server_url=_server_url(request, s))
 
     @app.post("/runners", response_class=HTMLResponse)
     def create_runner(request: Request, name: str = Form("")):
@@ -452,8 +440,6 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     def delete_runner(request: Request, rid: int):
         u = user_of(request)
         r = db.one("SELECT * FROM runners WHERE id = ?", rid)
-        if r and r["kind"] == "server":
-            return back("/runners", err="sunucu çalıştırıcısı silinemez; kullanıcıların iznini Kullanıcılar sayfasından yönetin")
         if r and (u["admin"] or r["user_id"] == u["id"]):
             db.run("UPDATE jobs SET status = 'cancelled', finished = ? WHERE runner_id = ? AND status IN (?, ?)",
                    now(), rid, *JOB_ACTIVE)
@@ -465,30 +451,11 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     def share_runner(request: Request, rid: int, shared: str = Form("")):
         u = user_of(request)
         r = db.one("SELECT * FROM runners WHERE id = ?", rid)
-        if not r or r["user_id"] != u["id"] or r["kind"] == "server":
+        if not r or r["user_id"] != u["id"]:
             return back("/runners", err="paylaşımı yalnız çalıştırıcının sahibi değiştirebilir")
         db.run("UPDATE runners SET shared = ? WHERE id = ?", int(bool(shared)), rid)
         return back("/runners", msg=f"{r['name']}: " + ("ekipteki herkes iş verebilir" if shared
                                                          else "artık yalnız siz iş verebilirsiniz"))
-
-    # ------------------------------------------------------------------ sunucu işlem gücü izni
-    @app.post("/server-access")
-    def request_server_access(request: Request, note: str = Form("")):
-        u = user_of(request)
-        if u["admin"] or u["server_access"] == "approved":
-            return back("/runners", msg="sunucu çalıştırıcısını zaten kullanabilirsiniz")
-        db.run("UPDATE users SET server_access = 'requested', server_note = ? WHERE id = ?", note.strip()[:500], u["id"])
-        return back("/runners", msg="izin isteğiniz yöneticiye iletildi; onaylanınca sunucu çalıştırıcısı listede görünür")
-
-    @app.post("/users/{uid}/server-access")
-    def decide_server_access(request: Request, uid: int, action: str = Form(...)):
-        admin_of(request)
-        state = {"approve": "approved", "deny": "denied", "revoke": ""}.get(action)
-        if state is None or not db.one("SELECT id FROM users WHERE id = ?", uid):
-            raise HTTPException(400)
-        db.run("UPDATE users SET server_access = ? WHERE id = ?", state, uid)
-        return back("/users", msg={"approved": "sunucu kullanım izni verildi", "denied": "istek reddedildi",
-                                   "": "sunucu kullanım izni geri alındı"}[state])
 
     @app.get("/download/runner.zip")
     def runner_zip(request: Request):
@@ -521,8 +488,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     @app.get("/users", response_class=HTMLResponse)
     def users_page(request: Request):
         u = admin_of(request)
-        return page(request, "users.html", u, users=db.all("SELECT id, username, admin, created, server_access, server_note "
-                                                         "FROM users ORDER BY id"))
+        return page(request, "users.html", u, users=db.all("SELECT id, username, admin, created FROM users ORDER BY id"))
 
     @app.post("/users")
     def create_user(request: Request, username: str = Form(...), password: str = Form(...), admin: str = Form("")):

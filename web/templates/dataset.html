@@ -130,10 +130,6 @@
     <div class="card-head"><h2><span class="step">2</span> Modelle ön etiketle</h2></div>
     {% set models = [] %}
     {% for r in runners %}{% for m in r.models %}{% set _ = models.append((r, m)) %}{% endfor %}{% endfor %}
-    {% if server and server.id not in runners | map(attribute="id") | list %}
-    <p class="hint small">{{ icon("info") }} Sunucunun işlem gücünü (yavaş, yalnız CPU) kullanmak için
-      <a href="/runners">Yerel çalıştırıcılar</a> sayfasından yöneticiden izin isteyin.</p>
-    {% endif %}
     {% if runners and (models or uploaded_models) %}
     <form method="post" action="/datasets/{{ ds.id }}/jobs" class="stack">
       <label class="field"><span>Model (yerel çalıştırıcıda)</span>

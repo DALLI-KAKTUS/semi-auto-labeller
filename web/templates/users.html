@@ -14,18 +14,11 @@
   <section class="card flush">
     <div class="table-wrap">
     <table class="list">
-      <thead><tr><th>kullanıcı</th><th>rol</th><th>sunucu izni</th><th>oluşturma</th><th>parola sıfırla</th><th></th></tr></thead>
+      <thead><tr><th>kullanıcı</th><th>rol</th><th>oluşturma</th><th>parola sıfırla</th><th></th></tr></thead>
       <tbody>
       {% for u in users %}
         <tr><td><span class="user-cell"><span class="avatar sm">{{ u.username[:1] | upper }}</span><b>{{ u.username }}</b>{% if u.id == user.id %} <span class="muted small">(siz)</span>{% endif %}</span></td>
           <td>{% if u.admin %}<span class="badge running">yönetici</span>{% else %}<span class="badge">kullanıcı</span>{% endif %}</td>
-          <td>{% if u.admin %}<span class="muted small">her zaman</span>
-            {% else %}<form method="post" action="/users/{{ u.id }}/server-access" class="inline">
-            {% if u.server_access == "approved" %}<span class="badge done">izinli</span> <button class="link-btn small" name="action" value="revoke">geri al</button>
-            {% elif u.server_access == "requested" %}<span class="badge running">istiyor</span>{% if u.server_note %}<div class="muted small">“{{ u.server_note }}”</div>{% endif %}
-              <button class="btn sm" name="action" value="approve">onayla</button> <button class="btn sm secondary" name="action" value="deny">reddet</button>
-            {% else %}<span class="muted small">{{ "reddedildi" if u.server_access == "denied" else "yok" }}</span> <button class="link-btn small" name="action" value="approve">izin ver</button>{% endif %}
-            </form>{% endif %}</td>
           <td class="muted nowrap">{{ u.created[:10] }}</td>
           <td><form method="post" action="/users/{{ u.id }}/password" class="inline-form">
             <input name="password" type="password" placeholder="yeni parola" minlength="8" required aria-label="{{ u.username }} için yeni parola"><button class="btn sm secondary">kaydet</button></form></td>

@@ -378,27 +378,12 @@ def local_models(a, settings: dict) -> dict:
     return models
 
 
-def read_token_file(path: Path, sleep=time.sleep) -> str:
-    """Web uygulaması anahtarı yazana kadar bekler."""
-    while True:
-        try:
-            token = path.read_text(encoding="utf-8").strip()
-            if token:
-                return token
-        except OSError:
-            pass
-        log(f"anahtar dosyası bekleniyor: {path}")
-        sleep(5)
-
-
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m runner", description=__doc__.split("\n")[0])
     ap.add_argument("--server", default=os.environ.get("ENG_SERVER"),
                     help="web uygulamasının adresi (ENG_SERVER; indirilen pakette hazır gelir)")
     ap.add_argument("--token", default=os.environ.get("ENG_RUNNER_TOKEN"),
                     help="çalıştırıcı anahtarı (ENG_RUNNER_TOKEN); verilmezse tarayıcıda onayla eşleşir")
-    ap.add_argument("--token-file", default=os.environ.get("ENG_RUNNER_TOKEN_FILE"),
-                    help="anahtarı bu dosyadan oku; dosya değişirse yeniden okur (sunucu çalıştırıcısı konteyneri)")
     ap.add_argument("--model", action="append", default=[],
                     help="kart.json[=ağırlık], ağırlık.onnx (yanında .json kartı) ya da python:dosya.py:Sinif")
     ap.add_argument("--device", default="auto", help="auto | cpu | cuda | mps")
@@ -421,8 +406,6 @@ def main(argv=None) -> int:
         models = local_models(a, settings)
         while True:
             token = a.token or settings["servers"].get(server, {}).get("token")
-            if a.token_file:
-                token = read_token_file(Path(a.token_file))
             if not token:
                 got = pair(server, verify=not a.insecure, open_browser=not a.no_browser)
                 settings = load_settings()
@@ -435,10 +418,6 @@ def main(argv=None) -> int:
                 Runner(server, token, models, verify=not a.insecure).loop(a.once)
                 return 0
             except Unauthorized as e:
-                if a.token_file:                             # web anahtarı yeniledi: dosyadan yeniden oku
-                    log(f"{e}; anahtar dosyası yeniden okunacak")
-                    time.sleep(5)
-                    continue
                 if a.token:
                     print(f"hata: {e}", file=sys.stderr)
                     return 1

@@ -484,5 +484,3 @@ details.card.sub-panel > summary { padding: 14px 16px; }
 .copy-zone > summary { display: flex; align-items: center; gap: 8px; font-weight: 580; }
 .copy-zone[open] > summary { margin-bottom: 14px; }
 .copy-zone { margin-bottom: 16px; }
-.server-warn { display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; color: var(--warn); max-width: 46ch; }
-.server-warn .i { flex: none; width: 14px; height: 14px; margin-top: 2px; }

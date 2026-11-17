@@ -73,13 +73,6 @@ class DB:
                 c.execute("ALTER TABLE runners ADD COLUMN shared INTEGER NOT NULL DEFAULT 0")
             if "shared" not in [r[1] for r in c.execute("PRAGMA table_info(runner_pairings)")]:
                 c.execute("ALTER TABLE runner_pairings ADD COLUMN shared INTEGER NOT NULL DEFAULT 0")
-            # sunucu çalıştırıcısı (kind = 'server') ve kullanıcının ona erişim izni ('' | requested | approved | denied)
-            if "kind" not in [r[1] for r in c.execute("PRAGMA table_info(runners)")]:
-                c.execute("ALTER TABLE runners ADD COLUMN kind TEXT NOT NULL DEFAULT 'local'")
-            ucols = [r[1] for r in c.execute("PRAGMA table_info(users)")]
-            if "server_access" not in ucols:
-                c.execute("ALTER TABLE users ADD COLUMN server_access TEXT NOT NULL DEFAULT ''")
-                c.execute("ALTER TABLE users ADD COLUMN server_note TEXT")
 
     @contextmanager
     def conn(self):

@@ -62,36 +62,10 @@ services:
       LABEL_STUDIO_URL: http://label-studio:8000
       LABEL_STUDIO_PUBLIC_URL: https://${LABEL_STUDIO_DOMAIN}
       LABEL_STUDIO_API_KEY: ${LS_API_KEY}
-      ENG_SERVER_RUNNER_TOKEN_FILE: /runner-key/token
     volumes:
       - webdata:/data
-      - runnerkey:/runner-key
     expose:
       - "8000"
-
-  # Sunucunun CPU'sunda çalışan çalıştırıcı (izinli kullanıcılar için, yavaş). Diğer konteynerler aç kalmasın diye
-  # 2 çekirdek ve 3 GB RAM ile sınırlı, işlemci yarışında düşük öncelikli.
-  server-runner:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.runner
-    restart: unless-stopped
-    depends_on:
-      - web
-    environment:
-      ENG_SERVER: http://web:8000
-      ENG_RUNNER_TOKEN_FILE: /runner-key/token
-      OMP_NUM_THREADS: "2"
-      MKL_NUM_THREADS: "2"
-    volumes:
-      - runnerkey:/runner-key:ro
-      - servermodels:/app/modeller
-      - runnercache:/home/eng/.cache
-    cpus: 2.0
-    cpu_shares: 256
-    mem_limit: 3g
-    memswap_limit: 3g
-    pids_limit: 256
 
   caddy:
     profiles: ["standalone"]
@@ -116,8 +90,5 @@ volumes:
   pgdata:
   lsdata:
   webdata:
-  runnerkey:
-  servermodels:
-  runnercache:
   caddy_data:
   caddy_config:
