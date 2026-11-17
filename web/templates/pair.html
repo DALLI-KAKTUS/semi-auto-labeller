@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_ui.html" import icon %}
+{% block title %}Bilgisayarı bağla · ENG label app{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Bilgisayarı bağla</h1>
+    <p class="sub">Yerel çalıştırıcı bu bilgisayarı <b>{{ user.username }}</b> hesabına bağlamak istiyor. Onaylarsanız
+      çalıştırıcı sizin adınıza iş alabilir; anahtarı kendisi saklar, siz bir şey kopyalamazsınız.</p>
+  </div>
+</header>
+
+<section class="card pair-card">
+  {% if pairing %}
+  <div class="pair-code mono">{{ code }}</div>
+  <p class="muted center">Bu kod çalıştırıcı penceresinde yazan kodla aynı olmalı.</p>
+  <dl class="pair-info">
+    <dt>Bilgisayar</dt><dd>{{ pairing.info.hostname or "bilinmiyor" }}</dd>
+    <dt>Sistem</dt><dd>{{ pairing.info.platform or "-" }}{% if pairing.info.python %} · Python {{ pairing.info.python }}{% endif %}</dd>
+  </dl>
+  <div class="notice">{{ icon("alert") }}<div>Bu isteği <b>siz başlatmadıysanız</b> (ör. biri size bu bağlantıyı
+    gönderdiyse) onaylamayın; <b>Reddet</b>'e basın.</div></div>
+  <form method="post" action="/baglan" class="stack">
+    <input type="hidden" name="code" value="{{ code }}">
+    <label class="field"><span>Çalıştırıcı adı</span>
+      <input name="name" value="{{ pairing.info.hostname or '' }}" placeholder="ör. laboratuvar GPU bilgisayarı"></label>
+    <div class="row">
+      <button class="btn" name="action" value="approve">{{ icon("tick") }} Onayla</button>
+      <button class="btn secondary" name="action" value="deny">{{ icon("x") }} Reddet</button>
+    </div>
+  </form>
+  {% else %}
+  {% if expired %}<div class="notice">{{ icon("alert") }}<div>Kod geçersiz ya da süresi dolmuş (kodlar 10 dakika
+    geçerli). Çalıştırıcıyı kapatıp yeniden açın; yeni kod gösterir.</div></div>{% endif %}
+  <form method="get" action="/baglan" class="stack">
+    <label class="field"><span>Çalıştırıcı penceresindeki kod</span>
+      <input name="kod" class="mono" placeholder="ABCD-EFGH" autocomplete="off" autofocus required></label>
+    <button class="btn">Devam</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

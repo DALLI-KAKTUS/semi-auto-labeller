@@ -28,19 +28,22 @@
 
 <section class="card" id="h2">
   <div class="card-head"><h2><span class="step">2</span> Yerel çalıştırıcı ve model</h2></div>
-  <p>Model VPS'te değil, çalıştırıcının açık olduğu <b>kendi bilgisayarınızda</b> çalışır. Önce
-    <a href="/runners">Yerel çalıştırıcılar</a> sayfasındaki paketi indirin ve Python 3.11 kurulum adımlarını izleyin.
-    <b>Yeni anahtar oluştur</b> ile anahtar alın; yalnız bir kez gösterilir, kimseyle paylaşmayın. Ekrandaki komutu
-    kendi bilgisayarınızda çalıştırın ve iş bitene kadar terminali açık bırakın. Bilgisayarınızda gelen bağlantı/port açmanız gerekmez.</p>
+  <p>Model VPS'te değil, çalıştırıcının açık olduğu <b>kendi bilgisayarınızda</b> çalışır.
+    <a href="/runners">Yerel çalıştırıcılar</a> sayfasından paketi indirip açın, macOS'ta
+    <code>ENG-Calistirici.command</code>, Windows'ta <code>ENG-Calistirici.bat</code> dosyasına çift tıklayın. İlk
+    açılışta Python ortamı kendiliğinden kurulur ve tarayıcıda bir onay sayfası açılır: kodun çalıştırıcı penceresindekiyle
+    aynı olduğunu kontrol edip <b>Onayla</b>'ya basın. Anahtar kopyalamanız gerekmez; sonraki açılışlarda yalnız çift
+    tıklamak yeter. İş bitene kadar pencereyi açık bırakın. Bilgisayarınızda gelen bağlantı/port açmanız gerekmez.</p>
   <ul>
-    <li><b>Ağırlık bilgisayarda kalsın:</b> komutta <code>--model models/lite_v8.json=/yol/lite_net.pt</code> gibi
-      kart ve gerçek ağırlık yolunu belirtin. Örnek ağırlık indirme paketinde bulunmaz.</li>
+    <li><b>Ağırlık bilgisayarda kalsın:</b> ağırlık dosyasını (ör. <code>lite_net.pt</code>) paketteki
+      <code>modeller/</code> klasörüne koyun; çalıştırıcı açılırken bulur. Örnek ağırlık indirme paketinde bulunmaz.</li>
     <li><b>Modeli web'e yükleyin:</b> veri setindeki <b>Yeni model yükle</b> alanına JSON model kartı ve
-      ONNX/PT/PTH ağırlığını yükleyin. Bu dosyalar sunucuda saklanır ve iş sırasında yerel çalıştırıcıya indirilir;
-      yalnızca güvendiğiniz modeli çalıştırın. Bu yöntemde çalıştırıcıyı <code>--model</code> olmadan başlatabilirsiniz.</li>
+      ONNX/PT/PTH ağırlığını yükleyin. Bu dosyalar sunucuda saklanır ve iş sırasında yerel çalıştırıcıya indirilir.
+      Güvenlik için web'den yalnız ONNX ve smp (yalnız tensör) modelleri kabul edilir.</li>
   </ul>
-  <p class="hint">{{ icon("info") }} Çalıştırıcı çevrimdışı görünüyorsa terminali ve bağlantıyı kontrol edin. Anahtar
-    kaybolursa eski çalıştırıcıyı silip yeni anahtar oluşturun.</p>
+  <p class="hint">{{ icon("info") }} Çalıştırıcı çevrimdışı görünüyorsa penceresini ve bağlantıyı kontrol edin.
+    Çalıştırıcıyı web'den silerseniz bağlantısı geçersiz olur; bir sonraki açılışta yeniden onay ister. Onay sayfasını
+    siz başlatmadıysanız <b>Reddet</b>'e basın.</p>
 </section>
 
 <section class="card" id="h3">

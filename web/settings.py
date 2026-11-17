@@ -5,7 +5,7 @@
     LABEL_STUDIO_PUBLIC_URL    tarayıcıdaki bağlantılar için Label Studio adresi (varsayılan: LABEL_STUDIO_URL)
     LABEL_STUDIO_API_KEY       Label Studio anahtarı (hizmet hesabı; legacy token ya da Personal Access Token)
     ENG_ADMIN_USERNAME / ENG_ADMIN_PASSWORD   veritabanında hiç kullanıcı yoksa ilk yönetici bunlarla oluşturulur
-    ENG_PUBLIC_URL             web uygulamasının dış adresi (çalıştırıcı komutunda gösterilir)
+    ENG_PUBLIC_URL             web uygulamasının dış adresi (çalıştırıcı paketine ve eşleştirme bağlantısına yazılır)
     ENG_SECURE_COOKIES         1 ise oturum çerezi yalnız HTTPS'te gönderilir (Caddy arkasında 1)
 """
 from __future__ import annotations

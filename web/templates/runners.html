@@ -9,7 +9,7 @@
       çalıştırıcı</b> sunucuya bağlanır, iş olup olmadığını sorar, görüntüleri indirir, modelinizle tahmin eder ve
       sonuçları geri gönderir. Bilgisayarınızda port açmanız gerekmez; model dosyanız bilgisayarınızdan çıkmaz.</p>
   </div>
-  <div class="actions"><a class="btn secondary" href="/download/runner.zip">{{ icon("download") }} Çalıştırıcıyı indir</a></div>
+  <div class="actions"><a class="btn" href="/download/runner.zip">{{ icon("download") }} Çalıştırıcıyı indir</a></div>
 </header>
 
 {% if new_token %}
@@ -17,14 +17,27 @@
   <div class="card-head"><h2>{{ icon("key") }} Çalıştırıcı anahtarı (yalnız şimdi gösteriliyor)</h2></div>
   <p class="muted">Bu sayfadan çıkınca anahtar bir daha gösterilmez; kimseyle paylaşmayın.</p>
   <pre class="copy">{{ new_token }}</pre>
-  <p>Kendi bilgisayarınızda uygulama klasöründe çalıştırın:</p>
-  <pre class="copy">scripts/run_runner.sh --server {{ server_url }} --token {{ new_token }} \
-  --model models/lite_v8.json=/yol/lite_net.pt</pre>
-  <p>Yalnız web'den yüklediğiniz modeli kullanacaksanız komuttaki <code>--model ...</code> bölümünü çıkarın.</p>
-  <p class="muted small">Windows: <code>scripts\run_runner.bat</code> aynı argümanlarla. Anahtarı ortam değişkeni olarak da
-    verebilirsiniz: <code>ENG_RUNNER_TOKEN</code>.</p>
+  <p>Paket klasöründe çalıştırın (sunucu adresi pakette hazır gelir):</p>
+  <pre class="copy">.venv/bin/python -m runner --token {{ new_token }}</pre>
+  <p class="muted small">Başka bir sunucu için <code>--server {{ server_url }}</code> ekleyin. Anahtarı ortam
+    değişkeni olarak da verebilirsiniz: <code>ENG_RUNNER_TOKEN</code>.</p>
 </section>
 {% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>{{ icon("play") }} Bilgisayarınızı üç adımda bağlayın</h2></div>
+  <ol class="howto">
+    <li><a href="/download/runner.zip"><b>Çalıştırıcıyı indirin</b></a> ve zip'i açın. Sunucu adresi pakette hazır
+      gelir; anahtar oluşturmanız gerekmez.</li>
+    <li><b>Modelinizi koyun:</b> ağırlık dosyasını (ör. <code>lite_net.pt</code>) paketteki <code>modeller/</code>
+      klasörüne kopyalayın. Modeli veri seti sayfasından web'e yüklediyseniz bu adımı atlayın.</li>
+    <li><b>Çift tıklayın:</b> macOS'ta <code>ENG-Calistirici.command</code>, Windows'ta <code>ENG-Calistirici.bat</code>
+      (Linux: <code>sh eng-calistirici.sh</code>). İlk açılışta Python ortamı kendiliğinden kurulur. Açılan tarayıcı
+      sayfasında kodu kontrol edip <b>Onayla</b>'ya basın. Sonraki açılışlarda yalnız çift tıklamak yeter.</li>
+  </ol>
+  <p class="hint">{{ icon("info") }} macOS "açılamıyor" derse dosyaya sağ tıklayıp <b>Aç</b>'ı seçin; Windows
+    "bilgisayarınızı korudu" derse <b>Ek bilgi &gt; Yine de çalıştır</b>. İş bitene kadar pencereyi açık bırakın.</p>
+</section>
 
 <div class="layout">
 <div class="col">
@@ -42,39 +55,41 @@
           <td>{% for m in r.models %}<div class="model-line"><b>{{ m.name }}</b> <span class="mono muted small">{{ m.version }}</span> <span class="chip">{{ m.device }}</span></div>{% else %}<span class="muted">-</span>{% endfor %}</td>
           <td class="muted small hide-sm">{{ r.info.hostname or "" }} {{ r.info.platform or "" }}</td>
           <td class="end">{% if user.admin or r.user_id == user.id %}
-            <form method="post" action="/runners/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Çalıştırıcı silinsin mi? Anahtarı geçersiz olur.')"><button class="icon-btn danger" title="Çalıştırıcıyı sil" aria-label="{{ r.name }} sil">{{ icon("trash") }}</button></form>{% endif %}</td></tr>
+            <form method="post" action="/runners/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Çalıştırıcı silinsin mi? Bağlantısı geçersiz olur.')"><button class="icon-btn danger" title="Çalıştırıcıyı sil" aria-label="{{ r.name }} sil">{{ icon("trash") }}</button></form>{% endif %}</td></tr>
       {% endfor %}
       </tbody>
     </table>
     </div>
-    {% else %}<p class="muted pad">Henüz çalıştırıcı yok.</p>{% endif %}
-    <form method="post" action="/runners" class="create-row pad top-line">
-      <span class="create-ic">{{ icon("key") }}</span>
-      <input name="name" placeholder="ad (ör. laboratuvar GPU bilgisayarı)" aria-label="Çalıştırıcı adı">
-      <button class="btn">Yeni anahtar oluştur</button>
-    </form>
+    {% else %}<p class="muted pad">Henüz çalıştırıcı yok. Yukarıdaki adımlarla ilk bilgisayarınızı bağlayın.</p>{% endif %}
   </section>
 </div>
 
 <aside class="col side-col">
   <section class="card">
-    <div class="card-head"><h2>{{ icon("terminal") }} Kurulum</h2></div>
-    <ol class="howto">
-      <li><a href="/download/runner.zip">Çalıştırıcıyı indirin</a> (uygulama kodu ve model kartları; model dosyası dahil değil) ve açın.</li>
-      <li>Python 3.11 ortamı: <pre>uv venv --python 3.11 .venv
-uv pip install --python .venv -r requirements.txt</pre></li>
-      <li>Soldan anahtar oluşturun ve gösterilen komutu çalıştırın.</li>
-    </ol>
-    <div class="sub-head">Model</div>
-    <p><code>--model</code> birden çok kez verilebilir:</p>
+    <div class="card-head"><h2>{{ icon("box") }} Modeller</h2></div>
     <ul class="dense">
-      <li><code>models/lite_v8.json=/yol/lite_net.pt</code>: model kartı ve ağırlık dosyası (PC12 lite_v8 ağı)</li>
-      <li><code>/yol/model.onnx</code>: yanında aynı adlı <code>.json</code> kartı olan ONNX modeli</li>
-      <li><code>python:/yol/model.py:Sinif</code>: kendi Python sınıfınız</li>
+      <li><b>PC12 lite_v8:</b> <code>lite_net.pt</code> dosyasını <code>modeller/</code> klasörüne koyun; kartı pakette
+        hazır.</li>
+      <li><b>Kendi ONNX/PT modeliniz:</b> ağırlığın yanına aynı adlı <code>.json</code> kartını koyun
+        (ör. <code>m.onnx</code> + <code>m.json</code>).</li>
+      <li><b>Web'e yüklenen model:</b> çalıştırıcı işe başlarken kendisi indirir. Güvenlik için web'den yalnız ONNX ve
+        smp (yalnız tensör) modelleri çalıştırılır.</li>
     </ul>
-    <p class="hint">{{ icon("info") }} Kart biçimi indirdiğiniz paketteki <code>models/README.md</code> dosyasında. Etiket
-      adları sunucudan gelir (Cell, Neurite, Group).</p>
+    <p class="hint">{{ icon("info") }} Kart biçimi paketteki <code>models/README.md</code> dosyasında. Etiket adları
+      sunucudan gelir (Cell, Neurite, Group).</p>
   </section>
+
+  <details class="card sub-panel">
+    <summary>{{ icon("terminal") }} Gelişmiş: elle anahtar</summary>
+    <p class="muted small">Sunucu ya da otomasyon gibi tarayıcı açılamayan makineler için. Anahtar yalnız bir kez
+      gösterilir. Model belirtmek için <code>--model kart.json=/yol/ağırlık.pt</code>,
+      <code>--model /yol/model.onnx</code> ya da <code>--model python:/yol/m.py:Sinif</code> verilebilir.</p>
+    <form method="post" action="/runners" class="create-row top-line">
+      <span class="create-ic">{{ icon("key") }}</span>
+      <input name="name" placeholder="ad (ör. laboratuvar GPU sunucusu)" aria-label="Çalıştırıcı adı">
+      <button class="btn secondary">Anahtar oluştur</button>
+    </form>
+  </details>
 </aside>
 </div>
 {% endblock %}

@@ -50,11 +50,14 @@ models/lite_v8.json=/yol/lite_net.pt` kullanın.
 ## Modeli ekleme yolları
 
 1. **Web'den yükle:** Veri seti > Yeni model yükle: kart `.json` + ağırlık `.onnx`, `.pt` veya `.pth`. Model sunucuda
-   saklanır; seçilen çalıştırıcı iş sırasında indirir ve **kendi bilgisayarında** çalıştırır. Model dosyanızı sunucuda
-   tutmak istemiyorsanız 2. yöntemi kullanın.
-2. **Yalnız yerel:** Çalıştırıcıda `--model /yol/model.onnx` (yanında `model.json`) veya
-   `--model /yol/kart.json=/yol/ağırlık.pt` verin. Model dosyası sunucuya hiç gönderilmez. Çalıştırıcının ilan ettiği
-   model veri seti sayfasındaki listede görünür. Birden çok `--model` kullanılabilir.
+   saklanır; seçilen çalıştırıcı iş sırasında indirir ve **kendi bilgisayarında** çalıştırır. Güvenlik için yalnız
+   `onnx` ve `smp` (yalnız tensör, `weights_only=True`) biçimleri kabul edilir; TorchScript açılırken kod
+   çalıştırabileceğinden yalnız yerel kullanılır. Model dosyanızı sunucuda tutmak istemiyorsanız 2. yöntemi kullanın.
+2. **Yalnız yerel:** Ağırlık dosyasını çalıştırıcı paketindeki `modeller/` klasörüne koyun. Dosya adı bir kartın
+   `weights` adıyla aynıysa (ör. `lite_net.pt` → `models/lite_v8.json`) ya da yanında aynı adlı `.json` kartı varsa
+   (`m.onnx` + `m.json`) çalıştırıcı açılırken bulur. Komut satırından `--model /yol/model.onnx` (yanında `model.json`)
+   veya `--model /yol/kart.json=/yol/ağırlık.pt` de verilebilir; birden çok `--model` kullanılabilir. Model dosyası
+   sunucuya hiç gönderilmez; çalıştırıcının ilan ettiği model veri seti sayfasındaki listede görünür.
 3. **Özel Python modeli:** Yalnız yerel çalıştırıcıda `--model python:/yol/m.py:Sinif`. Sınıfın `version` özelliği,
    `predict(path)` yöntemi, isteğe bağlı `load()` yöntemi olmalı. `predict` bir `app.model.Prediction` veya
    `{"cell_labels": HxW uint16 (0=arka plan, 1..N=hücre), "branch": HxW bool,

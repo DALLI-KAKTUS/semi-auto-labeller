@@ -12,9 +12,11 @@ TUI/CLI: yerel klasör → yerel model → Label Studio → aynı karşılaştı
 Model **web sunucusunda çalışmaz**. Yerel çalıştırıcı sunucuya dışarı doğru HTTPS isteğiyle bağlanır (port açmaz),
 görüntüyü indirir ve tahmin sonucunu gönderir. İki model ekleme yolu vardır:
 
-- **Yalnız yerel:** Ağırlık dosyası bilgisayarınızda kalır; çalıştırıcıya `--model kart.json=/yol/model.pt` verin.
+- **Yalnız yerel:** Ağırlık dosyası bilgisayarınızda kalır; paketteki `modeller/` klasörüne koyun (ya da
+  `--model kart.json=/yol/model.pt` verin).
 - **Web'den model yükleme:** `.json` model kartı + `.onnx`/`.pt`/`.pth` ağırlığı veri seti sayfasından yükleyin.
   Sunucuda saklanan dosya çalıştırıcı tarafından işe başlarken indirilir; **çıkarım yine bilgisayarınızda** yapılır.
+  Web'den yalnız ONNX ve smp (`weights_only` ile açılan tensör) modelleri kabul edilir; TorchScript yalnız yerelde.
 
 `models/lite_v8.json`, örnek olarak `lite_net.pt` ağırlıklarını kullanır: smp U-Net / ConvNeXt-tiny, 7 çıktı kanalı,
 Cellpose akış çözücüsü. CAMEX kaynak koduna veya paket manifestine bağlı değildir. Kaynak ağırlıklar dağıtıma **dahil
@@ -46,18 +48,37 @@ scripts/run_web.sh                 # http://127.0.0.1:8000
 Web uygulamasına giriş yapın; bir veri seti oluşturun (Label Studio'da proje açar), görüntüleri sürükleyip bırakın.
 Ekip üyeleri için giriş sonrası üst menüde **Kullanım rehberi** (`/help`) bulunur: hesaplar, yerel çalıştırıcı,
 ön etiketleme, insan kontrolü, rapor ve veri güvenliği adımlarını anlatır.
-Web'deki **Yerel çalıştırıcılar** sayfasından bir anahtar oluşturun; kendi bilgisayarınızda:
+### Yerel çalıştırıcı
+
+Web'deki **Yerel çalıştırıcılar > Çalıştırıcıyı indir** ile gelen paket (`eng-calistirici.zip`) sunucu adresini içerir;
+ağırlık ve anahtar içermez. Kullanıcı:
+
+1. Zip'i açar, ağırlığı (ör. `lite_net.pt`) `modeller/` klasörüne koyar (web'e yüklenen modeller için gerekmez).
+2. `ENG-Calistirici.command` (macOS) / `ENG-Calistirici.bat` (Windows) / `sh eng-calistirici.sh` (Linux) dosyasını
+   çalıştırır. Başlatıcı ilk açılışta [uv](https://docs.astral.sh/uv/) kurar ve `requirements-runner.txt`'yi
+   `uv pip install --torch-backend auto` ile kurar (NVIDIA varsa CUDA'lı torch).
+3. Tarayıcıda açılan `/baglan?kod=ABCD-EFGH` sayfasında kodu kontrol edip **Onayla**'ya basar.
+
+Eşleştirme cihaz kodu akışıdır: çalıştırıcı `POST /api/runner/pair` ile 10 dakikalık tek kullanımlık kod ve gizli bir
+sorgu anahtarı alır; oturum açmış kullanıcı onaylayınca çalıştırıcı anahtarı bir kez teslim edilir ve
+`~/.config/eng-label-runner/config.json` (Windows: `%APPDATA%\eng-label-runner`, izin 0600) dosyasına kaydedilir.
+Sunucuda kodun ve anahtarın yalnız özeti durur. Çalıştırıcı web'den silinirse sonraki istekte 401 alır ve yeniden onay
+ister. Bağlantıyı bilgisayardan silmek için `python -m runner --cikis`.
+
+Model bulma sırası: `--model` verilmişse yalnız onlar; yoksa `modeller/` klasörü (kartı `modeller/` ya da `models/`
+içinde, ağırlık adı karttaki `weights` adıyla aynı), daha önce pencereye sürüklenip kaydedilen dosyalar ve geliştirici
+kurulumunda `config.yaml > model`. Hiç model yoksa çalıştırıcı dosyayı pencereye sürüklemeyi önerir; boş geçilirse
+yalnız web'den yüklenen modelleri çalıştırır.
+
+Geliştirici kurulumunda ya da tarayıcı açılamayan makinelerde (sunucu, otomasyon) eski yol da çalışır: web'de
+**Gelişmiş: elle anahtar** ile anahtar oluşturup
 
 ```sh
 scripts/run_runner.sh --server http://127.0.0.1:8000 --token engr_... \
   --model models/lite_v8.json=/yol/lite_net.pt
 ```
 
-Web'den yüklediğiniz modeli kullanacaksanız `--model` vermeden çalıştırıcıyı başlatabilirsiniz: varsayılan yerel model
-bulunamazsa yalnızca web'den yüklenen modelleri çalıştırır. Başka bir makinede çalıştırıcı
-indirmek için web arayüzündeki **Çalıştırıcıyı indir** bağlantısını kullanın; indirme paketinde ağırlık/anahtar yoktur.
-
-**Not:** Çalıştırıcı anahtarı yalnız ilk oluşturulduğunda gösterilir; kaybederseniz yeni çalıştırıcı oluşturun.
+**Not:** Elle oluşturulan anahtar yalnız bir kez gösterilir; kaybederseniz çalıştırıcıyı silip yenisini oluşturun.
 Çalıştırıcıya iş atayın, Label Studio'da etiketleri **Submit** edin; veri seti sayfasından karşılaştırma raporu oluşturun.
 Rapor sayfasında görüntü üzerinde model (eflatun) / insan (yeşil) hücre sınırları ve farklı nörit pikselleri görünür.
 
@@ -140,8 +161,9 @@ TUI/CLI'nin dosya yolu ve çalışma klasörü `config.yaml`'dadır; web uygulam
 .venv/bin/python -m pytest -q tests
 ```
 
-12 test: maske dönüşümü, eşleştirme, rapor, kullanıcı oturumu, kullanım rehberi erişimi, yerel Python eklenti modeli ile web/çalıştırıcı uçtan
-uca, web'den ONNX yükleme/çalıştırıcı indirme, iptal ve kötü anahtar. Lite_v8 ağırlığı için önceki CAMEX çıkarımının
+15 test: maske dönüşümü, eşleştirme, rapor, kullanıcı oturumu, kullanım rehberi erişimi, yerel Python eklenti modeli ile web/çalıştırıcı uçtan
+uca, web'den ONNX yükleme/çalıştırıcı indirme, iptal ve kötü anahtar, çalıştırıcının tarayıcı onayıyla eşleşmesi (onay,
+red, tek kullanımlık kod), `modeller/` klasörü taraması ve TorchScript yüklemesinin reddi. Lite_v8 ağırlığı için önceki CAMEX çıkarımının
 maskeleri 768×512, 1920×1080 ve 2× fotoğrafta **piksel piksel aynı** çıktı (ONNX dışa aktarımı da aynı maskeleri
 verdi). Gerçek Label Studio 1.23.2 ile PNG, 16-bit TIFF, büyük görüntü, ön etiket, insan etiketi, rapor, bindirme ve
 ZIP dışa aktarma doğrulandı. Gerçek PC12 fotoğraflarıyla henüz denenmedi.

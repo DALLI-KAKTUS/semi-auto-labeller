@@ -1,4 +1,4 @@
-"""SQLite deposu: kullanıcılar, oturumlar, çalıştırıcılar, veri setleri, görüntüler, işler ve raporlar.
+"""SQLite deposu: kullanıcılar, oturumlar, çalıştırıcılar (ve eşleştirme kodları), veri setleri, görüntüler, işler ve raporlar.
 
 Etiketlerin kendisi Label Studio'da durur; burada yalnız hangi görüntünün hangi göreve karşılık geldiği, işlerin durumu
 ve kaydedilmiş karşılaştırma raporları tutulur. Her istek kendi bağlantısını açar (WAL kipi).
@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS runners (
     id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL,
     token_hash TEXT UNIQUE NOT NULL, models TEXT NOT NULL DEFAULT '[]', info TEXT NOT NULL DEFAULT '{}',
     last_seen REAL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS runner_pairings (
+    id INTEGER PRIMARY KEY, code_hash TEXT UNIQUE NOT NULL, secret_hash TEXT UNIQUE NOT NULL,
+    info TEXT NOT NULL DEFAULT '{}', status TEXT NOT NULL DEFAULT 'pending',
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, name TEXT, expires REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS models (
     id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL, version TEXT NOT NULL, card TEXT NOT NULL, weights TEXT NOT NULL,

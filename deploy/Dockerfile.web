@@ -14,7 +14,7 @@ COPY web ./web
 COPY runner ./runner
 COPY models ./models
 COPY scripts/run_runner.sh scripts/run_runner.bat scripts/export_onnx.py ./scripts/
-COPY requirements.txt ./requirements.txt
+COPY requirements.txt requirements-runner.txt ./
 COPY labeling_config.xml ./labeling_config.xml
 
 RUN useradd --create-home --uid 10001 eng && mkdir -p /data && chown eng:eng /data

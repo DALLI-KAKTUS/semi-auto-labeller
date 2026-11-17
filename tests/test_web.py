@@ -4,9 +4,11 @@ from __future__ import annotations
 import copy
 import io
 import json
+import os
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import unquote
 
 import numpy as np
 import pytest
@@ -206,10 +208,15 @@ def test_full_flow(env):
     coco = json.loads(zipfile.ZipFile(io.BytesIO(r.content)).read("coco.json"))
     assert len(coco["images"]) == 2
 
-    # çalıştırıcı paketi config.yaml (anahtar) içermez
-    z = zipfile.ZipFile(io.BytesIO(c.get("/download/runner.zip").content)).namelist()
-    assert "eng-label-app/runner/__main__.py" in z and "eng-label-app/models/lite_v8.json" in z
+    # çalıştırıcı paketi: başlatıcılar ve sunucu adresi var, config.yaml (anahtar) yok
+    zf = zipfile.ZipFile(io.BytesIO(c.get("/download/runner.zip").content))
+    z = zf.namelist()
+    assert "eng-calistirici/runner/__main__.py" in z and "eng-calistirici/models/lite_v8.json" in z
+    assert "eng-calistirici/requirements-runner.txt" in z and "eng-calistirici/modeller/BENIOKU.txt" in z
     assert not any(n.endswith("config.yaml") for n in z)
+    assert json.loads(zf.read("eng-calistirici/runner/server.json"))["server"] == "http://testserver"
+    assert (zf.getinfo("eng-calistirici/ENG-Calistirici.command").external_attr >> 16) & 0o111
+    assert b"\r\n" in zf.read("eng-calistirici/ENG-Calistirici.bat")
 
     # silme: ad yanlışsa silinmez, doğruysa Label Studio projesiyle birlikte silinir
     r = c.post(f"/datasets/{did}/delete", data={"confirm": "yanlis", "delete_project": "1"}, follow_redirects=False)
@@ -294,6 +301,87 @@ def test_uploaded_onnx_runs_on_local_runner(env, monkeypatch):
 def test_cross_origin_form_rejected(env):
     r = env.client.post("/datasets", data={"name": "csrf"}, headers={"Origin": "https://evil.example"})
     assert r.status_code == 403
+
+
+def test_pairing_connects_runner_without_copying_token(env, tmp_path, monkeypatch):
+    """Çalıştırıcı kod ister, kullanıcı web'de onaylar, çalıştırıcı anahtarı alır ve kaydeder; kod tek kullanımlık."""
+    from runner import __main__ as R
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    anon = TestClient(env.app)
+    shown = {}
+
+    def approve(_seconds):
+        if "approved" not in shown:
+            # oturumsuz açılan onay sayfası girişe yönlendirir ve kodu kaybetmez
+            r = anon.get(f"/baglan?kod={shown['code']}", follow_redirects=False)
+            assert "next=/baglan%3Fkod%3D" in r.headers["location"]
+            page = env.client.get(f"/baglan?kod={shown['code'].lower().replace('-', ' ')}").text
+            assert shown["code"] in page and "Onayla" in page
+            r = env.client.post("/baglan", data={"code": shown["code"], "action": "approve", "name": "lab pc"},
+                                follow_redirects=False)
+            assert "msg=" in r.headers["location"]
+            shown["approved"] = True
+
+    got = R.pair("http://testserver", http=anon, show=shown.update, sleep=approve)
+    assert got["status"] == "approved" and got["token"].startswith("engr_") and got["name"] == "lab pc"
+    assert shown["url"] == f"http://testserver/baglan?kod={shown['code']}"
+    runner = env.app.state.db.one("SELECT * FROM runners")
+    assert runner["name"] == "lab pc" and json.loads(runner["info"])["hostname"]
+    # aynı gizli anahtarla ikinci kez anahtar alınamaz; kod artık geçersiz
+    assert anon.post("/api/runner/pair/poll", json={"secret": shown["secret"]}).json()["status"] == "expired"
+    assert "süresi dolmuş" in env.client.get(f"/baglan?kod={shown['code']}").text
+    rc = TestClient(env.app, headers={"Authorization": f"Bearer {got['token']}"})
+    assert rc.post("/api/runner/poll", json={"models": [], "wait": 0}).status_code == 200
+
+    # reddedilen istek anahtar vermez
+    p = anon.post("/api/runner/pair", json={"info": {"hostname": "yabanci"}}).json()
+    assert anon.post("/api/runner/pair/poll", json={"secret": p["secret"]}).json()["status"] == "pending"
+    env.client.post("/baglan", data={"code": p["code"], "action": "deny"})
+    assert anon.post("/api/runner/pair/poll", json={"secret": p["secret"]}).json() == {"status": "denied"}
+    assert len(env.app.state.db.all("SELECT id FROM runners")) == 1
+
+    # ayarlar yalnız kullanıcının okuyabileceği dosyaya yazılır
+    R.save_settings({"servers": {"http://testserver": {"token": got["token"]}}, "models": []})
+    assert R.load_settings()["servers"]["http://testserver"]["token"] == got["token"]
+    if os.name != "nt":
+        assert R.config_path().stat().st_mode & 0o077 == 0
+
+
+def test_runner_finds_models_in_folder(tmp_path):
+    from runner.__main__ import discover_models, model_spec
+
+    cards, folder = tmp_path / "models", tmp_path / "modeller"
+    cards.mkdir()
+    folder.mkdir()
+    (cards / "lite_v8.json").write_text(json.dumps({"name": "lite_v8", "weights": "lite_net.pt", "format": "smp"}))
+    (folder / "lite_net.pt").write_bytes(b"x")
+    (folder / "own.onnx").write_bytes(b"x")
+    (folder / "own.json").write_text(json.dumps({"name": "own", "weights": "own.onnx", "format": "onnx"}))
+    (folder / "other.pt").write_bytes(b"x")
+    (folder / "BENIOKU.txt").write_text("-")
+    specs, notes = discover_models(folder, cards)
+    assert specs == [f"{folder / 'own.json'}={folder / 'own.onnx'}", f"{cards / 'lite_v8.json'}={folder / 'lite_net.pt'}"]
+    assert len(notes) == 1 and "other.pt" in notes[0] and "lite_net.pt" in notes[0]
+    # pencereye sürüklenen yol (tırnaklı / kaçışlı boşluk), kart adından ya da sorularak bulunur
+    spaced = tmp_path / "my models" / "lite_net.pt"
+    spaced.parent.mkdir()
+    spaced.write_bytes(b"x")
+    assert model_spec(f"'{spaced}' ", cards) == f"{cards / 'lite_v8.json'}={spaced}"
+    if os.name != "nt":
+        assert model_spec(str(spaced).replace(" ", "\\ "), cards) == f"{cards / 'lite_v8.json'}={spaced}"
+    assert model_spec(str(folder / "other.pt"), cards, choose=lambda cs: cs[0]) == f"{cards / 'lite_v8.json'}={folder / 'other.pt'}"
+    with pytest.raises(Exception):
+        model_spec(str(folder / "other.pt"), cards)
+
+
+def test_torchscript_upload_rejected(env):
+    r = env.client.post("/datasets", data={"name": "ts"}, follow_redirects=False)
+    did = int(r.headers["location"].split("/")[2].split("?")[0])
+    card = {"name": "ts", "format": "torchscript"}
+    r = env.client.post(f"/datasets/{did}/models", files={
+        "card": ("card.json", json.dumps(card).encode()), "weights": ("m.pt", b"x")}, follow_redirects=False)
+    assert "err=" in r.headers["location"] and "TorchScript" in unquote(r.headers["location"])
 
 
 def test_runner_without_local_model_accepts_web_models(tmp_path, monkeypatch):

@@ -60,8 +60,11 @@ class Service:
             card = json.load(card_file.file)
             if not isinstance(card, dict) or not isinstance(card.get("name"), str):
                 raise ValueError("name alanı gerekli")
-            if card.get("format") not in ("onnx", "smp", "torchscript"):
-                raise ValueError("format onnx, smp veya torchscript olmalı")
+            if card.get("format") == "torchscript":
+                raise ValueError("TorchScript dosyası açılırken kod çalıştırabilir; web'e ONNX ya da smp (yalnız "
+                                 "tensör) yükleyin, TorchScript'i yalnız kendi çalıştırıcınızda yerel model olarak kullanın")
+            if card.get("format") not in ("onnx", "smp"):
+                raise ValueError("format onnx veya smp olmalı")
             if card["format"] == "smp" and not isinstance(card.get("net"), dict):
                 raise ValueError("smp modelinde net alanı gerekli")
         except (ValueError, UnicodeDecodeError, AttributeError, TypeError) as e:

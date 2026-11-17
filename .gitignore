@@ -10,3 +10,5 @@ webdata/
 .pytest_cache/
 .DS_Store
 config.yaml
+modeller/
+runner/server.json

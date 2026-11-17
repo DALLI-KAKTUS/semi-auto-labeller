@@ -455,6 +455,19 @@ ul.plain { list-style: none; padding: 0; }
 .auth-card .stack { gap: 14px; }
 .auth-card .btn { margin-top: 4px; height: 40px; }
 
+/* çalıştırıcı eşleştirme */
+.pair-card { max-width: 520px; }
+.pair-card .notice { margin: 16px 0; }
+.pair-code { font-size: 34px; font-weight: 700; letter-spacing: .12em; text-align: center; padding: 14px;
+  border: 1px dashed var(--accent); border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--text); }
+.pair-card .center { text-align: center; margin: 8px 0 16px; }
+.pair-info { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.pair-info dt { color: var(--muted); }
+.pair-info dd { margin: 0; font-weight: 580; }
+details.card.sub-panel { padding: 0; }
+details.card.sub-panel > :not(summary) { margin: 0 16px 14px; }
+details.card.sub-panel > summary { padding: 14px 16px; }
+
 /* kopyalama düğmesi (JS ekler) */
 .copy-wrap { position: relative; }
 .copy-wrap pre { padding-right: 44px; }

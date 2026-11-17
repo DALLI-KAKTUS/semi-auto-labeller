@@ -34,6 +34,7 @@ from .settings import Settings
 HERE = Path(__file__).resolve().parent
 ONLINE_SECONDS = 60          # bu süre içinde soran çalıştırıcı çevrimiçi sayılır
 POLL_SECONDS = 20            # uzun sorgu: iş yoksa çalıştırıcının isteği bu kadar bekletilir
+PAIR_POLL_SECONDS = 2        # eşleştirmede çalıştırıcı onayı bu aralıkla sorar
 PUBLIC = ("/login", "/static/", "/healthz", "/api/runner/")
 
 
@@ -101,7 +102,8 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     def login_redirect(request: Request):
         if request.url.path.startswith("/api/"):
             return JSONResponse({"error": "oturum gerekli"}, status_code=401)
-        return RedirectResponse(f"/login?next={quote(str(request.url.path))}", status_code=303)
+        target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
+        return RedirectResponse(f"/login?next={quote(target)}", status_code=303)
 
     @app.middleware("http")
     async def require_login(request: Request, call_next):
@@ -415,8 +417,28 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
     @app.get("/download/runner.zip")
     def runner_zip(request: Request):
         user_of(request)
-        return Response(_runner_zip(), media_type="application/zip",
-                        headers={"Content-Disposition": 'attachment; filename="eng-label-runner.zip"'})
+        return Response(_runner_zip(_server_url(request, s)), media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{RUNNER_DIR}.zip"'})
+
+    @app.get("/baglan", response_class=HTMLResponse)
+    def pair_page(request: Request, kod: str = ""):
+        u = user_of(request)
+        pairing = auth.pending_pairing(db, kod) if kod else None
+        n = auth.normalize_code(kod)
+        return page(request, "pair.html", u, code=f"{n[:4]}-{n[4:]}", pairing=pairing, expired=bool(kod) and not pairing)
+
+    @app.post("/baglan")
+    def pair_decide(request: Request, code: str = Form(...), action: str = Form(...), name: str = Form("")):
+        u = user_of(request)
+        p = auth.pending_pairing(db, code)
+        if not p:
+            return back(f"/baglan?kod={quote(code)}", err="kod geçersiz ya da süresi dolmuş; çalıştırıcıyı yeniden başlatın")
+        approve = action == "approve"
+        name = name.strip() or p["info"].get("hostname") or f"{u['username']} bilgisayarı"
+        auth.decide_pairing(db, p["id"], u["id"], name, approve)
+        if not approve:
+            return back("/runners", msg="bağlantı isteği reddedildi")
+        return back("/runners", msg=f"{name} hesabınıza bağlandı; birkaç saniye içinde çevrimiçi görünür")
 
     # ------------------------------------------------------------------ kullanıcılar
     @app.get("/users", response_class=HTMLResponse)
@@ -464,6 +486,23 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
             return back("/account", err="yeni parola en az 8 karakter olmalı")
         db.run("UPDATE users SET pw = ? WHERE id = ?", auth.hash_password(new), u["id"])
         return back("/account", msg="parola değiştirildi")
+
+    # ------------------------------------------------------------------ eşleştirme API'si (oturumsuz; kod + gizli anahtar)
+    @app.post("/api/runner/pair")
+    async def runner_pair_start(request: Request):
+        body = await request.json()
+        info = {k: str(v)[:100] for k, v in (body.get("info") or {}).items()
+                if k in ("hostname", "platform", "python", "runner")}
+        try:
+            p = auth.start_pairing(db, info)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=429)
+        return {**p, "url": f"{_server_url(request, s)}/baglan?kod={p['code']}", "interval": PAIR_POLL_SECONDS}
+
+    @app.post("/api/runner/pair/poll")
+    async def runner_pair_poll(request: Request):
+        body = await request.json()
+        return auth.claim_pairing(db, str(body.get("secret") or ""))
 
     # ------------------------------------------------------------------ çalıştırıcı API'si (Bearer anahtar)
     def runner_of(request: Request) -> dict:
@@ -582,16 +621,31 @@ def _rmtree(p: Path) -> None:
     shutil.rmtree(p, ignore_errors=True)
 
 
+RUNNER_DIR = "eng-calistirici"
 RUNNER_FILES = ("app/*.py", "runner/*.py", "models/*.json", "models/*.md", "labeling_config.xml",
-                "requirements.txt", "scripts/run_runner.sh", "scripts/run_runner.bat", "scripts/export_onnx.py")
+                "requirements.txt", "requirements-runner.txt", "scripts/run_runner.sh", "scripts/run_runner.bat",
+                "scripts/export_onnx.py")
+# runner/paket/ altındaki başlatıcılar paketin köküne konur (çift tıklanan dosyalar)
+RUNNER_LAUNCHERS = {"calistir.sh": ("ENG-Calistirici.command", "eng-calistirici.sh"),
+                    "calistir.bat": ("ENG-Calistirici.bat",), "BENIOKU.txt": ("BENIOKU.txt",),
+                    "modeller-BENIOKU.txt": ("modeller/BENIOKU.txt",)}
 
 
-def _runner_zip() -> bytes:
-    """Yerel çalıştırıcı için gereken dosyalar (uygulama kodu + model kartları). Model ağırlıkları ve config.yaml
-    (anahtar içerebilir) dahil değil."""
+def _runner_zip(server_url: str) -> bytes:
+    """Yerel çalıştırıcı paketi: uygulama kodu, model kartları, tek tıklık başlatıcılar ve sunucu adresi. Model
+    ağırlıkları, config.yaml ve anahtar dahil değil; çalıştırıcı ilk açılışta tarayıcı onayıyla eşleşir."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for pat in RUNNER_FILES:
             for p in sorted(C.ROOT.glob(pat)):
-                zf.write(p, Path("eng-label-app") / p.relative_to(C.ROOT))
+                zf.write(p, f"{RUNNER_DIR}/{p.relative_to(C.ROOT).as_posix()}")
+        for src, targets in RUNNER_LAUNCHERS.items():
+            data = (C.ROOT / "runner" / "paket" / src).read_bytes().replace(b"\r\n", b"\n")
+            for t in targets:
+                info = zipfile.ZipInfo(f"{RUNNER_DIR}/{t}", time.localtime()[:6])
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = (0o100755 if t.endswith((".command", ".sh")) else 0o100644) << 16
+                crlf = t.endswith((".bat", ".txt"))             # Windows cmd ve Not Defteri için
+                zf.writestr(info, data.replace(b"\n", b"\r\n") if crlf else data)
+        zf.writestr(f"{RUNNER_DIR}/runner/server.json", json.dumps({"server": server_url}) + "\n")
     return buf.getvalue()

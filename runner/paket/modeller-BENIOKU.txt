@@ -1,0 +1,8 @@
+Model dosyalarınızı bu klasöre koyun; çalıştırıcı açılırken kendiliğinden bulur.
+
+- PC12 lite_v8 ağı: lite_net.pt dosyasını buraya kopyalayın (kartı ../models/lite_v8.json).
+- Kendi ONNX/PT modeliniz: ağırlık dosyasının yanına aynı adlı .json kartını koyun
+  (ör. benim_modelim.onnx + benim_modelim.json). Kart biçimi: ../models/README.md
+
+Dosya adı kartta yazan "weights" adıyla aynı olmalı. Güvenmediğiniz kaynaktan gelen .pt/.pth dosyalarını
+çalıştırmayın.

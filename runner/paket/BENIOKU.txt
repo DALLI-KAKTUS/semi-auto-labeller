@@ -1,0 +1,26 @@
+ENG yerel çalıştırıcı
+=====================
+
+Model sunucuda değil, bu bilgisayarda çalışır. Çalıştırıcı sunucuya yalnız dışarı doğru bağlanır; port açmanız
+gerekmez, model dosyanız bilgisayarınızdan çıkmaz.
+
+1. Model dosyanızı (ör. lite_net.pt) "modeller" klasörüne koyun. Yalnız web'e yüklediğiniz modelleri
+   kullanacaksanız bu adımı atlayın.
+2. Başlatın:
+     macOS   : ENG-Calistirici.command dosyasına çift tıklayın.
+               "Açılamıyor" uyarısı çıkarsa: sağ tık > Aç; ya da Sistem Ayarları > Gizlilik ve Güvenlik >
+               "Yine de aç". Alternatif: Terminal'de  sh ENG-Calistirici.command
+     Windows : ENG-Calistirici.bat dosyasına çift tıklayın ("Windows bilgisayarınızı korudu" çıkarsa:
+               Ek bilgi > Yine de çalıştır).
+     Linux   : sh eng-calistirici.sh
+   İlk açılışta Python ortamı kurulur (birkaç dakika; NVIDIA ekran kartı varsa CUDA'lı sürüm seçilir).
+3. Açılan tarayıcı sayfasında kodun pencerede yazanla aynı olduğunu kontrol edip "Onayla"ya basın. Bu bilgisayar
+   hesabınıza bağlanır; sonraki açılışlarda yalnız çift tıklamanız yeter.
+
+İş bitene kadar pencereyi açık bırakın. Kapatırsanız yarım kalan iş yeniden açınca kaldığı yerden sürer.
+
+Bağlantıyı bu bilgisayardan silmek için:  .venv/bin/python -m runner --cikis
+(Windows: .venv\Scripts\python.exe -m runner --cikis). Web'deki "Yerel çalıştırıcılar" sayfasından silmek de
+anahtarı geçersiz kılar; çalıştırıcı bir sonraki açılışta yeniden onay ister.
+
+Model kartı biçimi ve kendi modelinizi ekleme: models/README.md
