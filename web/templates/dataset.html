@@ -1,146 +1,211 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon, bar, score %}
 {% block title %}{{ ds.name }} · ENG label app{% endblock %}
 {% block content %}
-<div class="head">
-  <h1>{{ ds.name }}</h1>
-  <div class="muted">sahibi {{ ds.owner or "-" }} · Label Studio projesi
-    {% if project_link %}<a href="{{ project_link }}" target="_blank" rel="noopener">#{{ ds.ls_project }} ↗</a>{% endif %}</div>
-  <div class="stats">
-    <div><b>{{ stats.total }}</b> görüntü</div>
-    <div><b>{{ stats.predicted }}</b> ön etiketli</div>
-    <div><b>{{ stats.labeled }}</b> insan kontrol etti</div>
-    <div><b>{{ stats.total - stats.labeled }}</b> bekliyor</div>
+{% set total = stats.total %}
+{% set waiting = total - stats.labeled %}
+<header class="page-head">
+  <div>
+    <nav class="crumbs"><a href="/">Veri setleri</a>{{ icon("chevron") }}<span>{{ ds.name }}</span></nav>
+    <h1>{{ ds.name }}</h1>
+    <p class="sub">sahibi {{ ds.owner or "-" }} · Label Studio projesi
+      {% if project_link %}<a href="{{ project_link }}" target="_blank" rel="noopener">#{{ ds.ls_project }} {{ icon("external", "sm") }}</a>{% else %}-{% endif %}</p>
   </div>
-</div>
-{% if ls_err %}<div class="flash err">Label Studio'ya ulaşılamadı, durumlar eksik: {{ ls_err }}</div>{% endif %}
+  {% if project_link %}<div class="actions">
+    <a class="btn secondary" href="{{ project_link }}" target="_blank" rel="noopener">{{ icon("external") }} Label Studio'da aç</a>
+  </div>{% endif %}
+</header>
+
+{% if ls_err %}<div class="flash err">{{ icon("alert") }}<span>Label Studio'ya ulaşılamadı, durumlar eksik: {{ ls_err }}</span></div>{% endif %}
 {% if stats.missing_task %}
-<div class="flash warn">{{ stats.missing_task }} görüntü Label Studio'ya yüklenemedi.
-  <form method="post" action="/datasets/{{ ds.id }}/sync" class="inline"><button class="small">Tekrar dene</button></form></div>
+<div class="flash warn">{{ icon("alert") }}<span>{{ stats.missing_task }} görüntü Label Studio'ya yüklenemedi.</span>
+  <form method="post" action="/datasets/{{ ds.id }}/sync" class="inline"><button class="btn sm secondary">{{ icon("refresh") }} Tekrar dene</button></form></div>
 {% endif %}
 
-<div class="grid2">
-<section class="card">
-  <h2><span class="step">1</span> Görüntü yükle</h2>
-  <div id="drop" class="drop" data-url="/api/datasets/{{ ds.id }}/images">
-    <p>Görüntüleri buraya sürükleyin ya da <label class="linklike">seçin<input id="files" type="file" multiple accept="{{ accept }}" hidden></label></p>
-    <p class="muted">PNG, TIFF, JPG, CZI. TIFF ve CZI Label Studio için PNG'ye çevrilir; model özgün dosyayı okur.</p>
-  </div>
-  <div id="uploads"></div>
-</section>
+{# iş akışı: her adımın ilerlemesi #}
+{% set p_up = (total - stats.missing_task) / total if total else 0 %}
+{% set p_pred = stats.predicted / total if total else 0 %}
+{% set p_lab = stats.labeled / total if total else 0 %}
+<ol class="steps">
+  <li class="{{ 'done' if total and p_up == 1 }}"><a href="#yukle">
+    <span class="step-n">{% if total and p_up == 1 %}{{ icon("tick") }}{% else %}1{% endif %}</span>
+    <span class="step-body"><span class="step-t">Görüntüler</span>
+      <span class="step-v"><b>{{ total }}</b> görüntü</span>
+      {{ bar(p_up) }}</span></a></li>
+  <li class="{{ 'done' if total and p_pred == 1 }}"><a href="#onetiket">
+    <span class="step-n">{% if total and p_pred == 1 %}{{ icon("tick") }}{% else %}2{% endif %}</span>
+    <span class="step-body"><span class="step-t">Ön etiket</span>
+      <span class="step-v"><b>{{ stats.predicted }}</b> / {{ total }} ön etiketli</span>
+      {{ bar(p_pred) }}</span></a></li>
+  <li class="{{ 'done' if total and p_lab == 1 }}"><a href="#kontrol">
+    <span class="step-n">{% if total and p_lab == 1 %}{{ icon("tick") }}{% else %}3{% endif %}</span>
+    <span class="step-body"><span class="step-t">İnsan kontrolü</span>
+      <span class="step-v" title="{{ stats.labeled }} insan kontrol etti · {{ waiting }} bekliyor"><b>{{ stats.labeled }}</b> / {{ total }} kontrol edildi</span>
+      {{ bar(p_lab) }}</span></a></li>
+  <li class="{{ 'done' if reports }}"><a href="#rapor">
+    <span class="step-n">{% if reports %}{{ icon("tick") }}{% else %}4{% endif %}</span>
+    <span class="step-body"><span class="step-t">Karşılaştırma</span>
+      <span class="step-v"><b>{{ reports | length }}</b> rapor{% if reports %} · son F1 {{ reports[0].summary.cells.f1 | num }}{% endif %}</span>
+      {{ bar(1 if reports else 0) }}</span></a></li>
+</ol>
 
-<section class="card">
-  <h2><span class="step">2</span> Modelle ön etiketle</h2>
-  <details>
-    <summary>Yeni model yükle (model kartı .json + ağırlık .onnx/.pt)</summary>
-    <p class="muted">Model dosyası sunucuda saklanır; çalıştırıcı işe başlayınca kendi bilgisayarına indirir.
-      <b>Model burada çalıştırılmaz.</b> Kart örnekleri: <code>models/README.md</code>. Kendi modelinizi yalnız güvendiğiniz
-      çalıştırıcıda çalıştırın.</p>
-    <form method="post" action="/datasets/{{ ds.id }}/models" enctype="multipart/form-data" class="stack">
-      <label>Model kartı (.json) <input type="file" name="card" accept=".json" required></label>
-      <label>Ağırlık dosyası (.onnx, .pt, .pth) <input type="file" name="weights" accept=".onnx,.pt,.pth" required></label>
-      <button>Modeli yükle</button>
-    </form>
-    {% if uploaded_models %}
-      <ul>{% for m in uploaded_models %}<li>{{ m.name }} · {{ m.version }} ({{ m.owner }})
-        {% if user.admin or m.user_id == user.id %}<form method="post" action="/models/{{ m.id }}/delete" class="inline"
-        onsubmit="return confirm('Model dosyası silinsin mi?')"><button class="link danger">sil</button></form>{% endif %}
-      </li>{% endfor %}</ul>
-    {% endif %}
-  </details>
-  {% set models = [] %}
-  {% for r in runners %}{% for m in r.models %}{% set _ = models.append((r, m)) %}{% endfor %}{% endfor %}
-  {% if runners and (models or uploaded_models) %}
-  <form method="post" action="/datasets/{{ ds.id }}/jobs" class="stack">
-    <label>Model (yerel çalıştırıcıda)
-      <select name="model" required>
-        {% for r, m in models %}
-        <option value="{{ r.id }}|{{ m.name }}">{{ r.name }} · {{ m.name }} ({{ m.device }}){% if not r.online %} · çevrimdışı{% endif %}</option>
-        {% endfor %}
-        {% for r in runners %}{% for m in uploaded_models %}
-        <option value="{{ r.id }}|#{{ m.id }}">{{ r.name }} · {{ m.name }} (web'e yüklendi, çalıştırıcı indirecek){% if not r.online %} · çevrimdışı{% endif %}</option>
-        {% endfor %}{% endfor %}
-      </select></label>
-    <div class="row">
-      <label>Kapsam <select name="scope">
-        <option value="missing">bu modelin ön etiketi olmayanlar</option>
-        <option value="all">tüm görüntüler</option></select></label>
-      <label>Güven eşiği <input name="min_score" type="number" min="0" max="1" step="0.05" value="0" class="short"></label>
+<div class="layout">
+<div class="col">
+  <section class="card flush" id="yukle">
+    <div class="card-head pad">
+      <h2><span class="step">1</span> Görüntüler <span class="count">{{ total }}</span></h2>
+      {% if images %}
+      <div class="filters">
+        <label class="search">{{ icon("search") }}<input id="img-search" type="search" placeholder="Ada göre ara" aria-label="Görüntü ara"></label>
+        <div class="seg" role="group" aria-label="Durum filtresi">
+          <button type="button" class="on" data-filter="all">Tümü <span>{{ total }}</span></button>
+          <button type="button" data-filter="wait">Bekliyor <span>{{ waiting }}</span></button>
+          <button type="button" data-filter="done">Kontrol edildi <span>{{ stats.labeled }}</span></button>
+        </div>
+      </div>
+      {% endif %}
     </div>
-    <button>Ön etiketlemeyi başlat</button>
-  </form>
-  <p class="muted">Model sunucuda değil, çalıştırıcının kurulu olduğu bilgisayarda çalışır; sonuçlar Label Studio'ya
-    ön etiket olarak eklenir.</p>
-  {% else %}
-  <p>Kayıtlı model yok. <a href="/runners">Kendi bilgisayarınızda yerel çalıştırıcıyı başlatın</a>; modelleri burada görünür.</p>
-  {% endif %}
-  <div id="jobs" data-url="/api/datasets/{{ ds.id }}/jobs"></div>
-</section>
+    <div class="pad-x">
+      <div id="drop" class="drop {{ 'compact' if images }}" data-url="/api/datasets/{{ ds.id }}/images">
+        <span class="drop-ic">{{ icon("upload") }}</span>
+        <div>
+          <p><b>Görüntüleri buraya sürükleyin</b> ya da <label class="linklike">bilgisayardan seçin<input id="files" type="file" multiple accept="{{ accept }}" hidden></label></p>
+          <p class="muted small">PNG, TIFF, JPG, CZI. TIFF ve CZI Label Studio için PNG'ye çevrilir; model özgün dosyayı okur.</p>
+        </div>
+      </div>
+      <div id="uploads"></div>
+    </div>
+    {% if images %}
+    <div class="table-wrap">
+    <table class="list images">
+      <thead><tr><th></th><th>ad</th><th class="hide-sm" title="ön etiket (model sürümü)">ön etiket</th><th>insan</th><th></th></tr></thead>
+      <tbody>
+      {% for i in images %}
+        <tr data-name="{{ i.name | lower }}" data-state="{{ 'done' if i.labeled else 'wait' }}">
+          <td class="thumb-cell"><img class="thumb" loading="lazy" src="/datasets/{{ ds.id }}/thumb/{{ i.id }}.jpg" alt=""></td>
+          <td class="name-cell"><span class="fname" title="{{ i.name }}">{{ i.name }}</span>
+            <span class="muted small">{{ i.width }}×{{ i.height }} ·
+              {% if i.link %}<a href="{{ i.link }}" target="_blank" rel="noopener" title="Label Studio'da aç">görev {{ i.ls_task }} {{ icon("external", "sm") }}</a>{% else %}<span class="err-text">Label Studio'ya yüklenmedi</span>{% endif %}</span></td>
+          <td class="hide-sm">{% for v in i.versions %}<span class="chip mono">{{ v }}</span>{% else %}<span class="muted">-</span>{% endfor %}</td>
+          <td class="nowrap">{% if i.labeled %}<span class="badge done">kontrol edildi</span>{% elif i.labeled is none %}<span class="badge">bilinmiyor</span>{% else %}<span class="badge queued">bekliyor</span>{% endif %}</td>
+          <td class="end"><form method="post" action="/datasets/{{ ds.id }}/images/{{ i.id }}/delete" class="inline" onsubmit="return confirm('{{ i.name }} ve Label Studio görevi silinsin mi?')"><button class="icon-btn danger" title="Görüntüyü sil" aria-label="{{ i.name }} sil">{{ icon("trash") }}</button></form></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="muted small pad no-match" hidden>Filtreye uyan görüntü yok.</p>
+    {% endif %}
+  </section>
 
-<section class="card">
-  <h2><span class="step">3</span> Label Studio'da kontrol et</h2>
-  <p>Ön etiketleri düzeltip <b>Submit</b> edin. Ayrı bir Label Studio hesabı gerekir (ilk girişte kaydolun ya da
-    yöneticiden davet bağlantısı isteyin).</p>
-  {% if project_link %}<a class="button" href="{{ project_link }}" target="_blank" rel="noopener">Projeyi aç ↗</a>{% endif %}
-</section>
-
-<section class="card">
-  <h2><span class="step">4</span> Model ile insanı karşılaştır</h2>
-  <form method="post" action="/datasets/{{ ds.id }}/compare" class="row">
-    <select name="version">
-      <option value="">her görevin en son model tahmini</option>
-      {% for v in versions %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-    </select>
-    <button>Rapor oluştur</button>
-  </form>
-  {% if reports %}
-  <table class="small">
-    <thead><tr><th>rapor</th><th>model</th><th>görev</th><th>hücre F1</th><th>ort. IoU</th><th>nörit Dice</th></tr></thead>
-    <tbody>{% for r in reports %}
-      <tr><td><a href="/reports/{{ r.id }}">#{{ r.id }} · {{ r.created[:16].replace("T", " ") }}</a></td>
-        <td class="mono">{{ r.model_version or "en son" }}</td><td>{{ r.summary.tasks }}</td>
-        <td>{{ r.summary.cells.f1 | num }}</td><td>{{ r.summary.cells.mean_iou | num }}</td><td>{{ r.summary.neurite.dice | num }}</td></tr>
-    {% endfor %}</tbody>
-  </table>
+  {% if user.admin or ds.owner_id == user.id %}
+  <details class="card danger-zone">
+    <summary>{{ icon("trash") }} Veri setini sil</summary>
+    <form method="post" action="/datasets/{{ ds.id }}/delete" class="stack">
+      <label class="field"><span>Onay için adını yazın: <b>{{ ds.name }}</b></span><input name="confirm" required autocomplete="off"></label>
+      <label class="check"><input type="checkbox" name="delete_project" value="1"> Label Studio projesini ve içindeki etiketleri de sil</label>
+      <div><button class="btn danger">Veri setini sil</button></div>
+    </form>
+  </details>
   {% endif %}
-  <h3>Dışa aktar (insan etiketleri)</h3>
-  <form method="get" action="/datasets/{{ ds.id }}/export.zip" class="row">
-    {% for f in formats %}<label class="check"><input type="checkbox" name="f" value="{{ f }}" checked> {{ f }}</label>{% endfor %}
-    <button>Zip indir</button>
-  </form>
-</section>
 </div>
 
-<section class="card">
-  <h2>Görüntüler</h2>
-  {% if images %}
-  <table>
-    <thead><tr><th></th><th>ad</th><th>boyut</th><th>Label Studio</th><th>ön etiket (model sürümü)</th><th>insan</th><th></th></tr></thead>
-    <tbody>
-    {% for i in images %}
-      <tr>
-        <td><img class="thumb" loading="lazy" src="/datasets/{{ ds.id }}/thumb/{{ i.id }}.jpg" alt=""></td>
-        <td>{{ i.name }}</td>
-        <td>{{ i.width }}×{{ i.height }}</td>
-        <td>{% if i.link %}<a href="{{ i.link }}" target="_blank" rel="noopener">görev {{ i.ls_task }} ↗</a>{% else %}<span class="badge failed">yüklenmedi</span>{% endif %}</td>
-        <td class="mono">{{ i.versions | join(", ") or "-" }}</td>
-        <td>{% if i.labeled %}<span class="badge done">kontrol edildi</span>{% elif i.labeled is none %}?{% else %}<span class="badge queued">bekliyor</span>{% endif %}</td>
-        <td><form method="post" action="/datasets/{{ ds.id }}/images/{{ i.id }}/delete" class="inline" onsubmit="return confirm('{{ i.name }} ve Label Studio görevi silinsin mi?')"><button class="link danger">sil</button></form></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<p class="muted">Henüz görüntü yok.</p>{% endif %}
-</section>
+<aside class="col side-col">
+  <section class="card" id="onetiket">
+    <div class="card-head"><h2><span class="step">2</span> Modelle ön etiketle</h2></div>
+    {% set models = [] %}
+    {% for r in runners %}{% for m in r.models %}{% set _ = models.append((r, m)) %}{% endfor %}{% endfor %}
+    {% if runners and (models or uploaded_models) %}
+    <form method="post" action="/datasets/{{ ds.id }}/jobs" class="stack">
+      <label class="field"><span>Model (yerel çalıştırıcıda)</span>
+        <select name="model" required>
+          {% for r, m in models %}
+          <option value="{{ r.id }}|{{ m.name }}">{{ r.name }} · {{ m.name }} ({{ m.device }}){% if not r.online %} · çevrimdışı{% endif %}</option>
+          {% endfor %}
+          {% for r in runners %}{% for m in uploaded_models %}
+          <option value="{{ r.id }}|#{{ m.id }}">{{ r.name }} · {{ m.name }} (web'e yüklendi, çalıştırıcı indirecek){% if not r.online %} · çevrimdışı{% endif %}</option>
+          {% endfor %}{% endfor %}
+        </select></label>
+      <div class="fields-2">
+        <label class="field"><span>Kapsam</span><select name="scope">
+          <option value="missing" title="bu modelin ön etiketi olmayanlar">ön etiketi olmayanlar</option>
+          <option value="all">tüm görüntüler</option></select></label>
+        <label class="field"><span>Güven eşiği</span><input name="min_score" type="number" min="0" max="1" step="0.05" value="0"></label>
+      </div>
+      <button class="btn block">{{ icon("play") }} Ön etiketlemeyi başlat</button>
+    </form>
+    <p class="hint">{{ icon("info") }} Model sunucuda değil, çalıştırıcının kurulu olduğu bilgisayarda çalışır; sonuçlar
+      Label Studio'ya ön etiket olarak eklenir.</p>
+    {% else %}
+    <div class="notice">{{ icon("cpu") }}<div>Kayıtlı model yok. <a href="/runners">Kendi bilgisayarınızda yerel çalıştırıcıyı başlatın</a>;
+      modelleri burada görünür.</div></div>
+    {% endif %}
 
-{% if user.admin or ds.owner_id == user.id %}
-<details class="card danger-zone">
-  <summary>Veri setini sil</summary>
-  <form method="post" action="/datasets/{{ ds.id }}/delete" class="stack">
-    <label>Onay için adını yazın: <b>{{ ds.name }}</b> <input name="confirm" required></label>
-    <label class="check"><input type="checkbox" name="delete_project" value="1"> Label Studio projesini ve içindeki etiketleri de sil</label>
-    <button class="danger">Sil</button>
-  </form>
-</details>
-{% endif %}
+    <details class="sub-panel">
+      <summary>{{ icon("box") }} Yeni model yükle{% if uploaded_models %} <span class="count">{{ uploaded_models | length }}</span>{% endif %}</summary>
+      <p class="muted small">Model kartı .json + ağırlık .onnx/.pt sunucuda saklanır; çalıştırıcı işe başlayınca kendi bilgisayarına
+        indirir. <b>Model burada çalıştırılmaz.</b> Kart örnekleri: <code>models/README.md</code>. Kendi modelinizi yalnız
+        güvendiğiniz çalıştırıcıda çalıştırın.</p>
+      <form method="post" action="/datasets/{{ ds.id }}/models" enctype="multipart/form-data" class="stack">
+        <label class="field"><span>Model kartı (.json)</span><input type="file" name="card" accept=".json" required></label>
+        <label class="field"><span>Ağırlık dosyası (.onnx, .pt, .pth)</span><input type="file" name="weights" accept=".onnx,.pt,.pth" required></label>
+        <div><button class="btn secondary">{{ icon("upload") }} Modeli yükle</button></div>
+      </form>
+      {% if uploaded_models %}
+      <ul class="model-list">{% for m in uploaded_models %}
+        <li>{{ icon("box", "muted") }}<div><b>{{ m.name }}</b> <span class="mono muted small">{{ m.version }}</span><div class="muted small">{{ m.owner }}</div></div>
+          {% if user.admin or m.user_id == user.id %}<form method="post" action="/models/{{ m.id }}/delete" class="inline"
+          onsubmit="return confirm('Model dosyası silinsin mi?')"><button class="icon-btn danger" title="Modeli sil" aria-label="{{ m.name }} sil">{{ icon("trash") }}</button></form>{% endif %}
+        </li>{% endfor %}</ul>
+      {% endif %}
+    </details>
+
+    <div class="sub-head">İşler</div>
+    <div id="jobs" data-url="/api/datasets/{{ ds.id }}/jobs"><p class="muted small">yükleniyor…</p></div>
+  </section>
+
+  <section class="card" id="kontrol">
+    <div class="card-head"><h2><span class="step">3</span> Label Studio'da kontrol et</h2></div>
+    <p>Ön etiketleri düzeltip <b>Submit</b> edin. Ayrı bir Label Studio hesabı gerekir (ilk girişte kaydolun ya da
+      yöneticiden davet bağlantısı isteyin).</p>
+    <div class="progress-line"><span><b>{{ stats.labeled }}</b> / {{ total }} kontrol edildi</span>{{ bar(p_lab) }}</div>
+    {% if project_link %}<a class="btn block" href="{{ project_link }}" target="_blank" rel="noopener">Projeyi aç {{ icon("external") }}</a>{% endif %}
+  </section>
+
+  <section class="card" id="rapor">
+    <div class="card-head"><h2><span class="step">4</span> Model ile insanı karşılaştır</h2></div>
+    <form method="post" action="/datasets/{{ ds.id }}/compare" class="stack">
+      <label class="field"><span>Model sürümü</span>
+        <select name="version">
+          <option value="">her görevin en son model tahmini</option>
+          {% for v in versions %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+        </select></label>
+      <button class="btn block">{{ icon("chart") }} Rapor oluştur</button>
+    </form>
+    {% if reports %}
+    <div class="sub-head">Raporlar</div>
+    <ul class="report-list">
+      {% for r in reports %}
+      <li><a href="/reports/{{ r.id }}">
+        <span class="rl-main"><b>#{{ r.id }}</b> <span class="muted">{{ r.created[:16].replace("T", " ") }}</span>
+          <span class="mono muted small">{{ r.model_version or "en son" }} · {{ r.summary.tasks }} görev</span></span>
+        <span class="rl-metrics">
+          <span title="hücre F1"><small>F1</small>{{ score(r.summary.cells.f1) }}</span>
+          <span title="eşleşen hücre ort. IoU"><small>IoU</small>{{ score(r.summary.cells.mean_iou) }}</span>
+          <span title="nörit Dice"><small>Dice</small>{{ score(r.summary.neurite.dice) }}</span>
+        </span></a></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <div class="sub-head">Dışa aktar (insan etiketleri)</div>
+    <form method="get" action="/datasets/{{ ds.id }}/export.zip" class="stack">
+      <div class="chips">
+        {% for f in formats %}<label class="chip-check"><input type="checkbox" name="f" value="{{ f }}" checked><span>{{ f }}</span></label>{% endfor %}
+      </div>
+      <button class="btn secondary block">{{ icon("download") }} Zip indir</button>
+    </form>
+  </section>
+</aside>
+</div>
 {% endblock %}
 {% block scripts %}<script>initDataset();</script>{% endblock %}

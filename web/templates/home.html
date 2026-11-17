@@ -1,50 +1,87 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon, status, bar %}
 {% block content %}
-<div class="grid2">
-<section class="card">
-  <h1>Veri setleri</h1>
-  <p class="muted">Her veri seti Label Studio'da bir projedir. Görüntüleri yükleyin, kendi bilgisayarınızdaki model
-    ön etiketlesin, Label Studio'da kontrol edin, sonra model ile insan etiketlerini karşılaştırın.
-    İlk kez kullanıyorsanız <a href="/help">ekip kullanım rehberini</a> okuyun.</p>
-  <form method="post" action="/datasets" class="row">
-    <input name="name" placeholder="yeni veri seti adı (ör. PC12 2026-11 deney 3)" required>
-    <button>Oluştur</button>
-  </form>
-  {% if datasets %}
-  <table>
-    <thead><tr><th>ad</th><th>görüntü</th><th>sahibi</th><th>oluşturma</th></tr></thead>
-    <tbody>
-    {% for d in datasets %}
-      <tr><td><a href="/datasets/{{ d.id }}">{{ d.name }}</a></td><td>{{ d.n_images }}</td>
-        <td>{{ d.owner or "-" }}</td><td>{{ d.created[:16].replace("T", " ") }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<p class="muted">Henüz veri seti yok.</p>{% endif %}
-</section>
+<header class="page-head">
+  <div>
+    <h1>Veri setleri</h1>
+    <p class="sub">Her veri seti Label Studio'da bir projedir. Görüntüleri yükleyin, kendi bilgisayarınızdaki model ön
+      etiketlesin, Label Studio'da kontrol edin, sonra model ile insan etiketlerini karşılaştırın.</p>
+  </div>
+</header>
 
-<section class="card">
-  <h2>Yerel çalıştırıcılar</h2>
-  {% if runners %}
-  <ul class="plain">
-    {% for r in runners %}
-    <li><span class="dot {{ 'on' if r.online else 'off' }}"></span> <b>{{ r.name }}</b> ({{ r.owner }}) ·
-      {{ r.models | map(attribute="name") | join(", ") or "model yok" }} · {{ r.last_seen | ago }}</li>
-    {% endfor %}
-  </ul>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <form method="post" action="/datasets" class="create-row">
+      <span class="create-ic">{{ icon("plus") }}</span>
+      <input name="name" placeholder="Yeni veri seti adı (ör. PC12 2026-11 deney 3)" aria-label="Yeni veri seti adı" required>
+      <button class="btn">Oluştur</button>
+    </form>
+  </section>
+
+  {% if datasets %}
+  <section class="card flush">
+    <div class="table-wrap">
+    <table class="list">
+      <thead><tr><th>ad</th><th class="num">görüntü</th><th class="hide-sm">sahibi</th><th class="hide-sm">oluşturma</th><th></th></tr></thead>
+      <tbody>
+      {% for d in datasets %}
+        <tr class="clickable" data-href="/datasets/{{ d.id }}">
+          <td><a class="ds-name" href="/datasets/{{ d.id }}"><span class="ds-ic">{{ icon("layers") }}</span>{{ d.name }}</a></td>
+          <td class="num">{{ d.n_images }}</td>
+          <td class="muted hide-sm">{{ d.owner or "-" }}</td>
+          <td class="muted nowrap hide-sm">{{ d.created[:16].replace("T", " ") }}</td>
+          <td class="end">{{ icon("chevron", "muted") }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
   {% else %}
-  <p>Model sizin bilgisayarınızda çalışır. <a href="/runners">Yerel çalıştırıcı ekleyin</a>.</p>
+  <section class="card empty">
+    <div class="empty-ic">{{ icon("layers") }}</div>
+    <h2>Henüz veri seti yok</h2>
+    <p class="muted">Yukarıdan bir ad verip ilk veri setinizi oluşturun. İlk kez kullanıyorsanız
+      <a href="/help">ekip kullanım rehberini</a> okuyun.</p>
+    <ol class="flow">
+      <li><span>1</span>Görüntü yükle</li><li><span>2</span>Modelle ön etiketle</li>
+      <li><span>3</span>Label Studio'da düzelt</li><li><span>4</span>Karşılaştır ve indir</li>
+    </ol>
+  </section>
   {% endif %}
-  <h2>Son işler</h2>
-  {% if jobs %}
-  <table class="small">
-    <thead><tr><th>#</th><th>veri seti</th><th>model</th><th>durum</th><th>ilerleme</th></tr></thead>
-    <tbody>{% for j in jobs %}
-      <tr><td>{{ j.id }}</td><td><a href="/datasets/{{ j.dataset_id }}">{{ j.dataset }}</a></td><td>{{ j.model }}</td>
-        <td><span class="badge {{ j.status }}">{{ j.status }}</span></td><td>{{ j.done }}/{{ j.total }}{% if j.failed %}, {{ j.failed }} hata{% endif %}</td></tr>
-    {% endfor %}</tbody>
-  </table>
-  {% else %}<p class="muted">İş yok.</p>{% endif %}
-</section>
+</div>
+
+<aside class="col side-col">
+  <section class="card">
+    <div class="card-head"><h2>{{ icon("cpu") }} Yerel çalıştırıcılar</h2><a href="/runners" class="more">yönet</a></div>
+    {% if runners %}
+    <ul class="runner-list">
+      {% for r in runners %}
+      <li><span class="dot {{ 'on' if r.online else 'off' }}" title="{{ 'çevrimiçi' if r.online else 'çevrimdışı' }}"></span>
+        <div><b>{{ r.name }}</b> <span class="muted">· {{ r.owner }}</span>
+          <div class="muted small">{{ r.models | map(attribute="name") | join(", ") or "model yok" }} · {{ r.last_seen | ago }}</div></div></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Model sizin bilgisayarınızda çalışır. <a href="/runners">Yerel çalıştırıcı ekleyin</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>{{ icon("sparkles") }} Son işler</h2></div>
+    {% if jobs %}
+    <ul class="job-list">
+      {% for j in jobs %}
+      <li>
+        <div class="job-top"><a href="/datasets/{{ j.dataset_id }}">{{ j.dataset }}</a>{{ status(j.status) }}</div>
+        <div class="job-sub muted small"><span>#{{ j.id }} · {{ j.model }}</span>
+          <span>{{ j.done }}/{{ j.total }}{% if j.failed %} · <span class="err-text">{{ j.failed }} hata</span>{% endif %}</span></div>
+        {{ bar((j.done + j.failed) / (j.total or 1), j.status) }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">İş yok.</p>{% endif %}
+  </section>
+</aside>
 </div>
 {% endblock %}

@@ -1,25 +1,33 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block title %}Kullanım rehberi · ENG label app{% endblock %}
 {% block content %}
-<div class="head">
-  <h1>Ekip kullanım rehberi</h1>
-  <p class="lead">Görüntü yükle → kendi bilgisayarında modelle ön etiketle → Label Studio'da düzelt → karşılaştır ve indir.</p>
-</div>
+<header class="page-head">
+  <div>
+    <h1>Ekip kullanım rehberi</h1>
+    <p class="sub">Görüntü yükle → kendi bilgisayarında modelle ön etiketle → Label Studio'da düzelt → karşılaştır ve indir.</p>
+  </div>
+</header>
 
-<div class="grid2">
-<section class="card">
-  <h2>1 · Hesap ve veri seti</h2>
+<ol class="flow wide">
+  <li><a href="#h1"><span>1</span>Hesap ve veri seti</a></li><li><a href="#h2"><span>2</span>Yerel çalıştırıcı ve model</a></li>
+  <li><a href="#h3"><span>3</span>Ön etiket ve insan kontrolü</a></li><li><a href="#h4"><span>4</span>Rapor ve dışa aktarma</a></li>
+</ol>
+
+<div class="grid2 prose">
+<section class="card" id="h1">
+  <div class="card-head"><h2><span class="step">1</span> Hesap ve veri seti</h2></div>
   <p>Bu web uygulaması ve <a href="{{ ls_url }}" target="_blank" rel="noopener">Label Studio ↗</a> için <b>ayrı hesaplar</b>
     gerekir. Web hesabını yöneticiniz oluşturur; Label Studio hesabı için kuruluş daveti isteyin. Parolanızı
     <a href="/account">hesabım</a> sayfasından değiştirin.</p>
   <p><a href="/">Veri setleri</a> sayfasında ad verip yeni veri seti oluşturun (Label Studio'da otomatik proje açılır).
-    Veri setinin <b>Görüntü yükle</b> alanına PNG, JPG, TIFF veya CZI dosyalarını bırakın. TIFF/CZI'nin görüntülenebilir
+    Veri setinin <b>Görüntüler</b> bölümündeki yükleme alanına PNG, JPG, TIFF veya CZI dosyalarını bırakın. TIFF/CZI'nin görüntülenebilir
     PNG kopyası Label Studio'ya gider, model özgün dosyayı kullanır. Yükleme başarısızsa veri setindeki
     <b>Tekrar dene</b> seçeneğini kullanın.</p>
 </section>
 
-<section class="card">
-  <h2>2 · Yerel çalıştırıcı ve model</h2>
+<section class="card" id="h2">
+  <div class="card-head"><h2><span class="step">2</span> Yerel çalıştırıcı ve model</h2></div>
   <p>Model VPS'te değil, çalıştırıcının açık olduğu <b>kendi bilgisayarınızda</b> çalışır. Önce
     <a href="/runners">Yerel çalıştırıcılar</a> sayfasındaki paketi indirin ve Python 3.11 kurulum adımlarını izleyin.
     <b>Yeni anahtar oluştur</b> ile anahtar alın; yalnız bir kez gösterilir, kimseyle paylaşmayın. Ekrandaki komutu
@@ -31,12 +39,12 @@
       ONNX/PT/PTH ağırlığını yükleyin. Bu dosyalar sunucuda saklanır ve iş sırasında yerel çalıştırıcıya indirilir;
       yalnızca güvendiğiniz modeli çalıştırın. Bu yöntemde çalıştırıcıyı <code>--model</code> olmadan başlatabilirsiniz.</li>
   </ul>
-  <p class="muted">Çalıştırıcı çevrimdışı görünüyorsa terminali ve bağlantıyı kontrol edin. Anahtar kaybolursa
-    eski çalıştırıcıyı silip yeni anahtar oluşturun.</p>
+  <p class="hint">{{ icon("info") }} Çalıştırıcı çevrimdışı görünüyorsa terminali ve bağlantıyı kontrol edin. Anahtar
+    kaybolursa eski çalıştırıcıyı silip yeni anahtar oluşturun.</p>
 </section>
 
-<section class="card">
-  <h2>3 · Ön etiket ve insan kontrolü</h2>
+<section class="card" id="h3">
+  <div class="card-head"><h2><span class="step">3</span> Ön etiket ve insan kontrolü</h2></div>
   <p>Veri setinde <b>Modelle ön etiketle</b> bölümünden çalıştırıcı/model, kapsam ve güven eşiği seçip
     <b>Ön etiketlemeyi başlat</b> düğmesine basın. İşin durumunu aynı sayfadan takip edin. Modelin sonucu
     Label Studio'ya <b>tahmin/ön etiket</b> olarak gelir; henüz insan etiketi sayılmaz.</p>
@@ -45,8 +53,8 @@
     yalnızca gönderilmiş insan etiketleri girer.</p>
 </section>
 
-<section class="card">
-  <h2>4 · Rapor ve dışa aktarma</h2>
+<section class="card" id="h4">
+  <div class="card-head"><h2><span class="step">4</span> Rapor ve dışa aktarma</h2></div>
   <p>Veri setindeki <b>Model ile insanı karşılaştır</b> bölümünde model sürümünü seçin (boşsa her görevin en son
     tahmini) ve <b>Rapor oluştur</b> düğmesine basın. Raporda hücre F1/IoU, nörit/grup Dice ve görüntü üstünde
     model–insan farkları bulunur; Markdown ve JSON indirme bağlantıları vardır.</p>
@@ -55,8 +63,8 @@
 </section>
 </div>
 
-<section class="card">
-  <h2>Ekip için önemli notlar</h2>
+<section class="card callout warn">
+  <div class="card-head"><h2>{{ icon("alert") }} Ekip için önemli notlar</h2></div>
   <ul>
     <li>Web'deki veri setleri ortak görünür. Label Studio Community'de proje bazlı erişim kısıtlaması yoktur;
       aynı kuruluştaki kullanıcılar diğer projeleri de görebilir. Hassas verileri yüklemeden önce ekip sorumlusuna danışın.</li>

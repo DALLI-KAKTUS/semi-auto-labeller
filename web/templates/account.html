@@ -1,13 +1,17 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block title %}Hesap · ENG label app{% endblock %}
 {% block content %}
+<header class="page-head">
+  <div class="user-cell big-user"><span class="avatar lg">{{ user.username[:1] | upper }}</span>
+    <div><h1>{{ user.username }}</h1><p class="sub">{{ "yönetici" if user.admin else "kullanıcı" }}</p></div></div>
+</header>
 <section class="card narrow">
-  <h1>{{ user.username }}</h1>
-  <h2>Parola değiştir</h2>
+  <div class="card-head"><h2>{{ icon("lock") }} Parola değiştir</h2></div>
   <form method="post" action="/account/password" class="stack">
-    <label>Mevcut parola <input name="old" type="password" autocomplete="current-password" required></label>
-    <label>Yeni parola (en az 8 karakter) <input name="new" type="password" minlength="8" autocomplete="new-password" required></label>
-    <button>Kaydet</button>
+    <label class="field"><span>Mevcut parola</span><input name="old" type="password" autocomplete="current-password" required></label>
+    <label class="field"><span>Yeni parola (en az 8 karakter)</span><input name="new" type="password" minlength="8" autocomplete="new-password" required></label>
+    <div><button class="btn">Kaydet</button></div>
   </form>
 </section>
 {% endblock %}

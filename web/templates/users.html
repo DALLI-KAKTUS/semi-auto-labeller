@@ -1,31 +1,44 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block title %}Kullanıcılar · ENG label app{% endblock %}
 {% block content %}
-<h1>Kullanıcılar</h1>
-<p class="muted">Bu hesaplar web uygulaması içindir. Etiketleyenlerin Label Studio'da ayrıca hesabı olmalı
-  (Label Studio > Organization > Invite people).</p>
-<div class="grid2">
-<section class="card">
-  <table>
-    <thead><tr><th>kullanıcı</th><th>rol</th><th>oluşturma</th><th>parola sıfırla</th><th></th></tr></thead>
-    <tbody>
-    {% for u in users %}
-      <tr><td>{{ u.username }}</td><td>{{ "yönetici" if u.admin else "kullanıcı" }}</td><td>{{ u.created[:10] }}</td>
-        <td><form method="post" action="/users/{{ u.id }}/password" class="row tight">
-          <input name="password" type="password" placeholder="yeni parola" minlength="8" required><button class="small">kaydet</button></form></td>
-        <td>{% if u.id != user.id %}<form method="post" action="/users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('{{ u.username }} silinsin mi?')"><button class="link danger">sil</button></form>{% endif %}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</section>
-<section class="card">
-  <h2>Kullanıcı ekle</h2>
-  <form method="post" action="/users" class="stack">
-    <label>Kullanıcı adı <input name="username" required></label>
-    <label>Parola (en az 8 karakter) <input name="password" type="password" minlength="8" required></label>
-    <label class="check"><input type="checkbox" name="admin" value="1"> yönetici</label>
-    <button>Ekle</button>
-  </form>
-</section>
+<header class="page-head">
+  <div>
+    <h1>Kullanıcılar</h1>
+    <p class="sub">Bu hesaplar web uygulaması içindir. Etiketleyenlerin Label Studio'da ayrıca hesabı olmalı
+      (Label Studio &gt; Organization &gt; Invite people).</p>
+  </div>
+</header>
+<div class="layout">
+<div class="col">
+  <section class="card flush">
+    <div class="table-wrap">
+    <table class="list">
+      <thead><tr><th>kullanıcı</th><th>rol</th><th>oluşturma</th><th>parola sıfırla</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr><td><span class="user-cell"><span class="avatar sm">{{ u.username[:1] | upper }}</span><b>{{ u.username }}</b>{% if u.id == user.id %} <span class="muted small">(siz)</span>{% endif %}</span></td>
+          <td>{% if u.admin %}<span class="badge running">yönetici</span>{% else %}<span class="badge">kullanıcı</span>{% endif %}</td>
+          <td class="muted nowrap">{{ u.created[:10] }}</td>
+          <td><form method="post" action="/users/{{ u.id }}/password" class="inline-form">
+            <input name="password" type="password" placeholder="yeni parola" minlength="8" required aria-label="{{ u.username }} için yeni parola"><button class="btn sm secondary">kaydet</button></form></td>
+          <td class="end">{% if u.id != user.id %}<form method="post" action="/users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('{{ u.username }} silinsin mi?')"><button class="icon-btn danger" title="Kullanıcıyı sil" aria-label="{{ u.username }} sil">{{ icon("trash") }}</button></form>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+</div>
+<aside class="col side-col">
+  <section class="card">
+    <div class="card-head"><h2>{{ icon("plus") }} Kullanıcı ekle</h2></div>
+    <form method="post" action="/users" class="stack">
+      <label class="field"><span>Kullanıcı adı</span><input name="username" required autocomplete="off"></label>
+      <label class="field"><span>Parola (en az 8 karakter)</span><input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+      <label class="check"><input type="checkbox" name="admin" value="1"> yönetici</label>
+      <button class="btn block">Ekle</button>
+    </form>
+  </section>
+</aside>
 </div>
 {% endblock %}

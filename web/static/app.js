@@ -1,4 +1,6 @@
-// ENG label app: görüntü yükleme, iş ilerlemesi, bindirme görüntüsü
+// ENG label app: görüntü yükleme, iş ilerlemesi, bindirme görüntüsü, küçük arayüz yardımcıları
+
+const STATUS = { queued: "kuyrukta", running: "çalışıyor", done: "bitti", failed: "hata", cancelled: "iptal" };
 
 function el(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
@@ -22,14 +24,14 @@ function uploadOne(url, file, row) {
         bar.value = 1;
         st.textContent = body.warning ? "yüklendi, Label Studio: " + body.warning : "tamam";
         st.style.color = body.warning ? "var(--warn)" : "var(--ok)";
-        resolve(true);
+        resolve(body.warning ? "warn" : "ok");
       } else {
         st.textContent = body.error || ("hata " + xhr.status);
         st.style.color = "var(--err)";
-        resolve(false);
+        resolve("err");
       }
     };
-    xhr.onerror = () => { st.textContent = "bağlantı hatası"; st.style.color = "var(--err)"; resolve(false); };
+    xhr.onerror = () => { st.textContent = "bağlantı hatası"; st.style.color = "var(--err)"; resolve("err"); };
     const fd = new FormData();
     fd.append("file", file);
     xhr.open("POST", url);
@@ -40,35 +42,46 @@ function uploadOne(url, file, row) {
 async function uploadFiles(files) {
   const drop = document.getElementById("drop");
   const list = document.getElementById("uploads");
-  const rows = [...files].map((f) => {
-    const r = el("div", { class: "upl" }, el("span", { class: "name" }, f.name), el("progress", { max: 1, value: 0 }),
+  files = [...files];
+  if (!files.length) return;
+  const rows = files.map((f) => {
+    const r = el("div", { class: "upl" }, el("span", { class: "name", title: f.name }, f.name), el("progress", { max: 1, value: 0 }),
       el("span", { class: "st muted" }, "bekliyor"));
     list.append(r);
     return r;
   });
-  let ok = 0;
+  const res = [];
   for (let i = 0; i < files.length; i++) {           // sırayla: büyük dosyalarda sunucu ve Label Studio boğulmasın
     rows[i].querySelector(".st").textContent = "yükleniyor";
-    if (await uploadOne(drop.dataset.url, files[i], rows[i])) ok++;
+    res.push(await uploadOne(drop.dataset.url, files[i], rows[i]));
   }
-  if (ok) list.append(el("div", { class: "upl" }, el("a", { href: location.pathname }, `${ok} görüntü eklendi, sayfayı yenile`)));
+  const ok = res.filter((r) => r !== "err").length;
+  if (ok && res.every((r) => r === "ok")) {          // sorunsuzsa listeyi tazele, uyarı/hata varsa okunsun diye bekle
+    list.append(el("div", { class: "upl summary" }, `${ok} görüntü eklendi, sayfa yenileniyor…`));
+    setTimeout(() => location.reload(), 700);
+  } else if (ok) {
+    list.append(el("div", { class: "upl summary" }, `${ok}/${files.length} görüntü eklendi`,
+      el("a", { href: location.pathname }, "sayfayı yenile")));
+  }
 }
 
 function renderJobs(box, jobs) {
+  if (!jobs.length) { box.replaceChildren(el("p", { class: "muted small" }, "Henüz iş yok.")); return; }
   box.replaceChildren(...jobs.slice(0, 6).map((j) => {
     const active = j.status === "queued" || j.status === "running";
-    const note = j.status === "queued" && !j.runner_online ? " · çalıştırıcı çevrimdışı, açılınca başlar" : "";
-    const meta = el("div", { class: "meta" },
-      el("span", {}, `#${j.id} ${j.model} · ${j.runner || "-"}`),
-      el("span", {}, el("span", { class: "badge " + j.status }, j.status), ` ${j.done}/${j.total}` + (j.failed ? `, ${j.failed} hata` : "") + note));
-    const kids = [meta, el("progress", { max: j.total || 1, value: j.done + j.failed })];
+    const meta = el("div", { class: "meta" }, el("b", {}, `#${j.id} · ${j.model}`),
+      el("span", { class: "badge " + j.status }, STATUS[j.status] || j.status));
+    const sub = el("div", { class: "sub" }, el("span", {}, j.runner || "-"),
+      el("span", {}, `${j.done}/${j.total}` + (j.failed ? ` · ${j.failed} hata` : "")));
+    const kids = [meta, el("progress", { class: j.status, max: j.total || 1, value: j.done + j.failed }), sub];
+    if (j.status === "queued" && !j.runner_online) kids.push(el("div", { class: "note" }, "çalıştırıcı çevrimdışı, açılınca başlar"));
     if (j.errors && j.errors.length) kids.push(el("div", { class: "errs" }, j.errors.map((e) => `${e.name}: ${e.error}`).join(" · ")));
     if (j.error) kids.push(el("div", { class: "errs" }, j.error));
     if (active) {
-      const f = el("form", { method: "post", action: `/jobs/${j.id}/cancel`, class: "inline" }, el("button", { class: "link danger" }, "iptal"));
-      kids.push(f);
+      kids.push(el("form", { method: "post", action: `/jobs/${j.id}/cancel`, class: "inline cancel" },
+        el("button", { class: "link danger" }, "iptal et")));
     }
-    return el("div", { class: "job" }, ...kids);
+    return el("div", { class: "job" + (active ? " active" : "") }, ...kids);
   }));
 }
 
@@ -94,15 +107,44 @@ function watchJobs() {
   tick();
 }
 
+// görüntü tablosu: ada göre arama ve durum süzgeci
+function initImageFilter() {
+  const search = document.getElementById("img-search");
+  const seg = document.querySelector(".seg");
+  if (!search || !seg) return;
+  const rows = [...document.querySelectorAll("table.images tbody tr")];
+  const none = document.querySelector(".no-match");
+  let state = "all";
+  const apply = () => {
+    const q = search.value.trim().toLowerCase();       // sunucudaki Python lower() ile aynı
+    let shown = 0;
+    for (const r of rows) {
+      const vis = (state === "all" || r.dataset.state === state) && (!q || r.dataset.name.includes(q));
+      r.hidden = !vis;
+      shown += vis;
+    }
+    if (none) none.hidden = shown > 0;
+  };
+  search.addEventListener("input", apply);
+  seg.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    seg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    state = b.dataset.filter;
+    apply();
+  });
+}
+
 function initDataset() {
   const drop = document.getElementById("drop");
   const input = document.getElementById("files");
   if (drop) {
-    input.addEventListener("change", () => uploadFiles(input.files));
+    input.addEventListener("change", () => { uploadFiles(input.files); input.value = ""; });
     ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
     ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
     drop.addEventListener("drop", (e) => uploadFiles(e.dataTransfer.files));
   }
+  initImageFilter();
   watchJobs();
 }
 
@@ -111,5 +153,50 @@ function toggleOverlay(btn, url) {
   const img = row.querySelector("img");
   if (!img.src) img.src = url;
   row.hidden = !row.hidden;
-  btn.textContent = row.hidden ? "bindirme" : "gizle";
+  (btn.querySelector("span") || btn).textContent = row.hidden ? "bindirme" : "gizle";
 }
+
+// ---------------------------------------------------------------- her sayfada
+document.addEventListener("DOMContentLoaded", () => {
+  // bildirim: kapatılabilir; yenilemede tekrar görünmesin diye msg/err adresten çıkarılır
+  document.querySelectorAll(".flash-x").forEach((b) => b.addEventListener("click", () => {
+    const f = b.closest(".flash");
+    f.classList.add("hide");
+    setTimeout(() => f.remove(), 200);
+  }));
+  const u = new URL(location.href);
+  if (u.searchParams.has("msg") || u.searchParams.has("err")) {
+    u.searchParams.delete("msg");
+    u.searchParams.delete("err");
+    history.replaceState(null, "", u.pathname + (u.search || "") + u.hash);
+  }
+  const ok = document.querySelector(".flash.ok");
+  if (ok) setTimeout(() => ok.querySelector(".flash-x")?.click(), 6000);
+
+  // kopyala düğmesi (anahtar ve komutlar)
+  document.querySelectorAll("pre.copy").forEach((pre) => {
+    const wrap = el("div", { class: "copy-wrap" });
+    pre.replaceWith(wrap);
+    const btn = el("button", { type: "button", class: "icon-btn copy-btn", title: "Kopyala", "aria-label": "Kopyala" });
+    btn.innerHTML = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent.trim());
+        btn.classList.add("ok");
+        btn.title = "Kopyalandı";
+        setTimeout(() => { btn.classList.remove("ok"); btn.title = "Kopyala"; }, 1500);
+      } catch (_) {                                  // HTTP'de clipboard yok: metni seç
+        const r = document.createRange();
+        r.selectNodeContents(pre);
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+      }
+    });
+    wrap.append(pre, btn);
+  });
+
+  // tıklanabilir tablo satırları (satırdaki bağlantı ya da düğme dışında bir yere tıklanınca)
+  document.querySelectorAll("tr.clickable").forEach((tr) => tr.addEventListener("click", (e) => {
+    if (!e.target.closest("a, button, input, form")) location.href = tr.dataset.href;
+  }));
+});
