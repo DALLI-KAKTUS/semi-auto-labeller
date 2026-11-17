@@ -77,6 +77,10 @@ class FakeLS:
             raise LSError("Label Studio'da bulunamadı (404)")
         return [t for t in self.tasks_.values() if t.project == pid]
 
+    def task_summaries(self, pid):
+        return [{"id": t.id, "annotations": sum(1 for a in t.annotations if not a.get("was_cancelled")),
+                 "versions": sorted({p["model_version"] for p in t.predictions})} for t in self.tasks(pid)]
+
     def task(self, tid):
         return self.tasks_[tid]
 

@@ -194,12 +194,8 @@ class Service:
 
     def task_status(self, ds: dict) -> dict[int, dict]:
         """görev no -> {labeled, versions, annotations}"""
-        out = {}
-        for tid, t in self.ls_tasks(ds).items():
-            anns = [a for a in (t.annotations or []) if not _get(a, "was_cancelled")]
-            out[tid] = {"labeled": bool(anns), "annotations": len(anns),
-                        "versions": sorted({_get(p, "model_version") for p in (t.predictions or [])} - {None})}
-        return out
+        return {t["id"]: {"labeled": t["annotations"] > 0, "annotations": t["annotations"], "versions": t["versions"]}
+                for t in self.ls().task_summaries(ds["ls_project"])}
 
     # -------------------------------------------------------------- çalıştırıcı sonuçları
     def store_result(self, job: dict, img: dict, payload: dict) -> None:
@@ -334,10 +330,6 @@ class Service:
                     zf.write(p, p.relative_to(out))
         shutil.rmtree(out)
         return z
-
-
-def _get(obj, key):
-    return obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
 
 
 def report_markdown(summary: dict, rows: list[dict]) -> str:

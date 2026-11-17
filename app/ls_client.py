@@ -79,6 +79,34 @@ class LSClient:
     def tasks(self, project_id: int) -> list:
         return list(self._call(self.client.tasks.list, project=project_id, fields="all"))
 
+    def task_summaries(self, project_id: int) -> list[dict]:
+        """Hafif görev listesi: [{id, annotations (iptal edilmemiş), versions}]. Maskeleri (tahmin/etiket sonuçlarını)
+        indirmez; yüzlerce görevli projede tasks()'tan çok daha hızlıdır."""
+        headers = {k: v for k, v in self.client._client_wrapper.get_headers().items() if k.lower() != "content-type"}
+        out, page = [], 1
+        while True:
+            try:
+                r = httpx.get(f"{self.url}/api/tasks", headers=headers, timeout=60, params={
+                    "project": project_id, "page": page, "page_size": 1000,
+                    "include": "id,total_annotations,predictions_model_versions"})
+            except httpx.ConnectError as e:
+                raise LSError(f"Label Studio'ya bağlanılamadı ({self.url})") from e
+            if r.status_code == 404 and page > 1:
+                break
+            if r.status_code >= 300:
+                raise LSError(f"görev listesi alınamadı ({r.status_code}): {r.text[:200]}")
+            body = r.json()
+            tasks = body.get("tasks", [])
+            for t in tasks:
+                v = t.get("predictions_model_versions") or ""
+                versions = v if isinstance(v, list) else v.split(",")
+                out.append({"id": t["id"], "annotations": int(t.get("total_annotations") or 0),
+                            "versions": sorted({str(x).strip() for x in versions if x and str(x).strip()})})
+            if not tasks or len(out) >= int(body.get("total", 0)):
+                break
+            page += 1
+        return out
+
     def task(self, task_id: int):
         return self._call(self.client.tasks.get, task_id)
 
