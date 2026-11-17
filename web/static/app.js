@@ -156,8 +156,48 @@ function toggleOverlay(btn, url) {
   (btn.querySelector("span") || btn).textContent = row.hidden ? "bindirme" : "gizle";
 }
 
+// ---------------------------------------------------------------- model yükleme (ilerleme çubuğuyla)
+function mb(n) { return (n / 1048576).toFixed(1) + " MB"; }
+
+function progressUpload(form) {
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const box = form.querySelector(".model-upl");
+    const bar = box.querySelector("progress");
+    const st = box.querySelector(".st");
+    const btn = form.querySelector("button");
+    const say = (t, color) => { st.textContent = t; st.style.color = color || ""; };
+    box.hidden = false;
+    btn.disabled = true;
+    bar.value = 0;
+    say("yükleme başlıyor…");
+    const t0 = Date.now();
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (!e.lengthComputable) { say(`yükleniyor: ${mb(e.loaded)}`); return; }
+      bar.value = e.loaded / e.total;
+      const rate = e.loaded / Math.max((Date.now() - t0) / 1000, 0.1);
+      const left = rate > 0 ? Math.round((e.total - e.loaded) / rate) : 0;
+      say(`yükleniyor: %${Math.floor(100 * e.loaded / e.total)} · ${mb(e.loaded)} / ${mb(e.total)}` +
+          (e.loaded < e.total ? ` · ~${left} s kaldı` : ""));
+    };
+    xhr.upload.onload = () => { bar.removeAttribute("value"); say("sunucu modeli kontrol ediyor…"); };
+    xhr.onload = () => {
+      if (xhr.status < 400 && xhr.responseURL) { location.href = xhr.responseURL; return; }
+      bar.value = 0;
+      btn.disabled = false;
+      say(xhr.status === 413 ? "dosya sunucunun izin verdiği boyuttan büyük" : `yükleme başarısız (hata ${xhr.status})`, "var(--err)");
+    };
+    xhr.onerror = () => { btn.disabled = false; say("bağlantı koptu; yükleme tamamlanmadı, tekrar deneyin", "var(--err)"); };
+    window.addEventListener("beforeunload", (e) => { if (btn.disabled && xhr.readyState < 4) e.preventDefault(); });
+    xhr.open("POST", form.action);
+    xhr.send(new FormData(form));
+  });
+}
+
 // ---------------------------------------------------------------- her sayfada
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("form[data-progress-upload]").forEach(progressUpload);
   // bildirim: kapatılabilir; yenilemede tekrar görünmesin diye msg/err adresten çıkarılır
   document.querySelectorAll(".flash-x").forEach((b) => b.addEventListener("click", () => {
     const f = b.closest(".flash");

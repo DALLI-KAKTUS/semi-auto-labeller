@@ -49,7 +49,10 @@
       <thead><tr><th>ad</th><th>durum</th><th>modeller</th><th class="hide-sm">bilgisayar</th><th></th></tr></thead>
       <tbody>
       {% for r in runners %}
-        <tr><td><b>{{ r.name }}</b><div class="muted small">{{ r.owner }}</div></td>
+        <tr><td><b>{{ r.name }}</b><div class="muted small">{{ r.owner }} · {{ "ekiple paylaşıldı" if r.shared else "yalnız sahibi kullanabilir" }}</div>
+            {% if r.user_id == user.id %}<form method="post" action="/runners/{{ r.id }}/share" class="inline">
+              {% if not r.shared %}<input type="hidden" name="shared" value="1">{% endif %}
+              <button class="link-btn small">{{ "Paylaşımı kapat" if r.shared else "Ekiple paylaş" }}</button></form>{% endif %}</td>
           <td class="nowrap"><span class="status-pill {{ 'on' if r.online else 'off' }}"><span class="dot {{ 'on' if r.online else 'off' }}"></span>{{ "çevrimiçi" if r.online else "çevrimdışı" }}</span>
             <div class="muted small">{{ r.last_seen | ago }}</div></td>
           <td>{% for m in r.models %}<div class="model-line"><b>{{ m.name }}</b> <span class="mono muted small">{{ m.version }}</span> <span class="chip">{{ m.device }}</span></div>{% else %}<span class="muted">-</span>{% endfor %}</td>

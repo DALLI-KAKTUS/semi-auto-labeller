@@ -146,10 +146,11 @@
       <p class="muted small">Model kartı .json + ağırlık .onnx/.pt sunucuda saklanır; çalıştırıcı işe başlayınca kendi bilgisayarına
         indirir. <b>Model burada çalıştırılmaz.</b> Kart örnekleri: <code>models/README.md</code>. Kendi modelinizi yalnız
         güvendiğiniz çalıştırıcıda çalıştırın.</p>
-      <form method="post" action="/datasets/{{ ds.id }}/models" enctype="multipart/form-data" class="stack">
+      <form method="post" action="/datasets/{{ ds.id }}/models" enctype="multipart/form-data" class="stack" data-progress-upload>
         <label class="field"><span>Model kartı (.json)</span><input type="file" name="card" accept=".json" required></label>
         <label class="field"><span>Ağırlık dosyası (.onnx, .pt, .pth)</span><input type="file" name="weights" accept=".onnx,.pt,.pth" required></label>
         <div><button class="btn secondary">{{ icon("upload") }} Modeli yükle</button></div>
+        <div class="upl model-upl" hidden><progress max="1" value="0"></progress><span class="st muted small" aria-live="polite"></span></div>
       </form>
       {% if uploaded_models %}
       <ul class="model-list">{% for m in uploaded_models %}

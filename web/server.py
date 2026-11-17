@@ -99,6 +99,13 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
             r["online"] = bool(r["last_seen"] and time.time() - r["last_seen"] < ONLINE_SECONDS)
         return rows
 
+    def can_use(u: dict, r: dict) -> bool:
+        """Çalıştırıcıya yalnız sahibi iş verebilir; sahibi paylaştıysa herkes (yönetici de istisna değil)."""
+        return bool(r["shared"]) or r["user_id"] == u["id"]
+
+    def usable_runners(u: dict) -> list[dict]:
+        return [r for r in runners_view() if can_use(u, r)]
+
     def login_redirect(request: Request):
         if request.url.path.startswith("/api/"):
             return JSONResponse({"error": "oturum gerekli"}, status_code=401)
@@ -201,7 +208,7 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         for r in reports:
             r["summary"] = json.loads(r["summary"])
         return page(request, "dataset.html", u, ds=ds, images=images, stats=stats, ls_err=ls_err,
-                    project_link=svc.project_link(ds["ls_project"]), runners=runners_view(), jobs=db.jobs(did, 20),
+                    project_link=svc.project_link(ds["ls_project"]), runners=usable_runners(u), jobs=db.jobs(did, 20),
                     reports=reports, versions=sorted({v for i in images for v in i["versions"]}),
                     formats=export.FORMATS, accept=",".join(C.IMAGE_EXT),
                     uploaded_models=db.all("SELECT m.*, u.username AS owner FROM models m JOIN users u ON u.id = m.user_id ORDER BY m.id DESC"))
@@ -286,6 +293,8 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         runner = db.one("SELECT * FROM runners WHERE id = ?", int(rid_s or 0))
         if not runner:
             return back(f"/datasets/{did}", err="çalıştırıcı bulunamadı")
+        if not can_use(u, runner):
+            return back(f"/datasets/{did}", err="bu çalıştırıcıyı yalnız sahibi kullanabilir (sahibi paylaşmadı)")
         remote_id = int(name[1:]) if name.startswith("#") and name[1:].isdigit() else None
         remote = db.one("SELECT * FROM models WHERE id = ?", remote_id) if remote_id else None
         ad = ({"name": remote["name"], "version": remote["version"]} if remote else
@@ -414,6 +423,16 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
             return back("/runners", msg="çalıştırıcı silindi; anahtarı artık geçersiz")
         return back("/runners", err="çalıştırıcıyı yalnız sahibi ya da yönetici silebilir")
 
+    @app.post("/runners/{rid}/share")
+    def share_runner(request: Request, rid: int, shared: str = Form("")):
+        u = user_of(request)
+        r = db.one("SELECT * FROM runners WHERE id = ?", rid)
+        if not r or r["user_id"] != u["id"]:
+            return back("/runners", err="paylaşımı yalnız çalıştırıcının sahibi değiştirebilir")
+        db.run("UPDATE runners SET shared = ? WHERE id = ?", int(bool(shared)), rid)
+        return back("/runners", msg=f"{r['name']}: " + ("ekipteki herkes iş verebilir" if shared
+                                                         else "artık yalnız siz iş verebilirsiniz"))
+
     @app.get("/download/runner.zip")
     def runner_zip(request: Request):
         user_of(request)
@@ -428,14 +447,15 @@ def create_app(settings: Settings | None = None, ls_factory=None) -> FastAPI:
         return page(request, "pair.html", u, code=f"{n[:4]}-{n[4:]}", pairing=pairing, expired=bool(kod) and not pairing)
 
     @app.post("/baglan")
-    def pair_decide(request: Request, code: str = Form(...), action: str = Form(...), name: str = Form("")):
+    def pair_decide(request: Request, code: str = Form(...), action: str = Form(...), name: str = Form(""),
+                    shared: str = Form("")):
         u = user_of(request)
         p = auth.pending_pairing(db, code)
         if not p:
             return back(f"/baglan?kod={quote(code)}", err="kod geçersiz ya da süresi dolmuş; çalıştırıcıyı yeniden başlatın")
         approve = action == "approve"
         name = name.strip() or p["info"].get("hostname") or f"{u['username']} bilgisayarı"
-        auth.decide_pairing(db, p["id"], u["id"], name, approve)
+        auth.decide_pairing(db, p["id"], u["id"], name, approve, shared=bool(shared))
         if not approve:
             return back("/runners", msg="bağlantı isteği reddedildi")
         return back("/runners", msg=f"{name} hesabınıza bağlandı; birkaç saniye içinde çevrimiçi görünür")

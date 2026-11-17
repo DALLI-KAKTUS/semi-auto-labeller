@@ -112,11 +112,11 @@ def pending_pairing(db: DB, code: str) -> dict | None:
     return p
 
 
-def decide_pairing(db: DB, pairing_id: int, user_id: int, name: str, approve: bool) -> bool:
+def decide_pairing(db: DB, pairing_id: int, user_id: int, name: str, approve: bool, shared: bool = False) -> bool:
     with db.conn() as c:
-        return c.execute("UPDATE runner_pairings SET status = ?, user_id = ?, name = ? "
+        return c.execute("UPDATE runner_pairings SET status = ?, user_id = ?, name = ?, shared = ? "
                          "WHERE id = ? AND status = 'pending' AND expires > ?",
-                         ("approved" if approve else "denied", user_id, name.strip()[:80], pairing_id,
+                         ("approved" if approve else "denied", user_id, name.strip()[:80], int(shared), pairing_id,
                           time.time())).rowcount == 1
 
 
@@ -134,5 +134,5 @@ def claim_pairing(db: DB, secret: str) -> dict:
     if p["status"] != "approved":
         return {"status": "denied"}
     rid, token = create_runner(db, p["user_id"], p["name"] or "çalıştırıcı")
-    db.run("UPDATE runners SET info = ? WHERE id = ?", p["info"], rid)
+    db.run("UPDATE runners SET info = ?, shared = ? WHERE id = ?", p["info"], int(p.get("shared") or 0), rid)
     return {"status": "approved", "token": token, "runner_id": rid, "name": p["name"]}

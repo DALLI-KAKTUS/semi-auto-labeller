@@ -68,6 +68,11 @@ class DB:
             c.executescript(SCHEMA)
             if "remote_model" not in [r[1] for r in c.execute("PRAGMA table_info(jobs)")]:
                 c.execute("ALTER TABLE jobs ADD COLUMN remote_model INTEGER REFERENCES models(id) ON DELETE SET NULL")
+            # paylaşılmayan çalıştırıcıya yalnız sahibi iş verebilir (eski kayıtlar özel kalır)
+            if "shared" not in [r[1] for r in c.execute("PRAGMA table_info(runners)")]:
+                c.execute("ALTER TABLE runners ADD COLUMN shared INTEGER NOT NULL DEFAULT 0")
+            if "shared" not in [r[1] for r in c.execute("PRAGMA table_info(runner_pairings)")]:
+                c.execute("ALTER TABLE runner_pairings ADD COLUMN shared INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def conn(self):

@@ -392,3 +392,40 @@ def test_runner_without_local_model_accepts_web_models(tmp_path, monkeypatch):
     from app import config as C
     monkeypatch.setattr(C, "load", lambda: {"model": {"card": str(tmp_path / "no_model.json"), "device": "cpu"}})
     assert parse_models([], "cpu") == {}
+
+
+def test_private_runner_only_owner_can_use(env):
+    """Paylaşılmayan çalıştırıcıya yalnız sahibi iş verebilir; sahibi paylaşınca herkes."""
+    from web import auth
+
+    db = env.app.state.db
+    auth.create_user(db, "ayse", "ayse-pass-1")
+    other = TestClient(env.app)
+    other.post("/login", data={"username": "ayse", "password": "ayse-pass-1"})
+    r = env.client.post("/datasets", data={"name": "ozel"}, follow_redirects=False)
+    did = int(r.headers["location"].split("/")[2].split("?")[0])
+    rid, _ = auth.create_runner(db, 1, "admin pc")
+    db.run("UPDATE runners SET models = ? WHERE id = ?", json.dumps([{"name": "m", "version": "m-1"}]), rid)
+    db.run("INSERT INTO images (dataset_id, name, file, created) VALUES (?, 'a.png', '', 'x')", did)
+
+    assert "admin pc" not in other.get(f"/datasets/{did}").text
+    r = other.post(f"/datasets/{did}/jobs", data={"model": f"{rid}|m"}, follow_redirects=False)
+    assert "yaln%C4%B1z%20sahibi" in r.headers["location"] and not db.all("SELECT id FROM jobs")
+    # sahibi olmayan paylaşımı değiştiremez
+    other.post(f"/runners/{rid}/share", data={"shared": "1"})
+    assert db.one("SELECT shared FROM runners WHERE id = ?", rid)["shared"] == 0
+    env.client.post(f"/runners/{rid}/share", data={"shared": "1"})
+    assert "admin pc" in other.get(f"/datasets/{did}").text
+    r = other.post(f"/datasets/{did}/jobs", data={"model": f"{rid}|m"}, follow_redirects=False)
+    assert "err=" not in r.headers["location"] and len(db.all("SELECT id FROM jobs")) == 1
+    env.client.post(f"/runners/{rid}/share")
+    assert db.one("SELECT shared FROM runners WHERE id = ?", rid)["shared"] == 0
+
+
+def test_pairing_shared_flag(env):
+    anon = TestClient(env.app)
+    for shared, want in (("1", 1), ("", 0)):
+        p = anon.post("/api/runner/pair", json={"info": {"hostname": "h"}}).json()
+        env.client.post("/baglan", data={"code": p["code"], "action": "approve", "name": f"pc{want}", "shared": shared})
+        rid = anon.post("/api/runner/pair/poll", json={"secret": p["secret"]}).json()["runner_id"]
+        assert env.app.state.db.one("SELECT shared FROM runners WHERE id = ?", rid)["shared"] == want

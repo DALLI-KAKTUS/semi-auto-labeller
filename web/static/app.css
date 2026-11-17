@@ -474,3 +474,10 @@ details.card.sub-panel > summary { padding: 14px 16px; }
 .copy-btn { position: absolute; top: 6px; right: 6px; background: var(--surface); border-color: var(--line); color: var(--muted); }
 .copy-btn:hover { color: var(--text); }
 .copy-btn.ok { color: var(--ok); }
+
+/* çalıştırıcı paylaşımı, model yükleme ilerlemesi */
+.link-btn { background: none; border: 0; padding: 0; margin-top: 4px; color: var(--accent); cursor: pointer; font: inherit; }
+.link-btn:hover { text-decoration: underline; }
+.link-btn.small { font-size: 12.5px; }
+.model-upl { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.model-upl progress { width: 100%; }

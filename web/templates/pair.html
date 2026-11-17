@@ -24,6 +24,9 @@
     <input type="hidden" name="code" value="{{ code }}">
     <label class="field"><span>Çalıştırıcı adı</span>
       <input name="name" value="{{ pairing.info.hostname or '' }}" placeholder="ör. laboratuvar GPU bilgisayarı"></label>
+    <label class="check"><input type="checkbox" name="shared" value="1"> Ekipteki herkes bu bilgisayarda iş çalıştırabilsin</label>
+    <p class="muted small">İşaretlemezseniz bu bilgisayara yalnız siz ön etiketleme işi verebilirsiniz. Sonra
+      <a href="/runners">Yerel çalıştırıcılar</a> sayfasından değiştirebilirsiniz.</p>
     <div class="row">
       <button class="btn" name="action" value="approve">{{ icon("tick") }} Onayla</button>
       <button class="btn secondary" name="action" value="deny">{{ icon("x") }} Reddet</button>
