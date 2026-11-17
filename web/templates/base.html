@@ -28,7 +28,7 @@
       {{ nav("/", "Veri setleri", "layers", path == "/" or path.startswith("/datasets") or path.startswith("/reports")) }}
       {{ nav("/runners", "Yerel çalıştırıcılar", "cpu", path.startswith("/runners")) }}
       {{ nav("/help", "Kullanım rehberi", "book", path.startswith("/help")) }}
-      {% if user.admin %}{{ nav("/users", "Kullanıcılar", "users", path.startswith("/users")) }}{% endif %}
+      {% if user.admin %}{{ nav("/users", "Kullanıcılar" ~ (" (" ~ server_requests ~ " istek)" if server_requests else ""), "users", path.startswith("/users")) }}{% endif %}
       <a href="{{ ls_url }}" target="_blank" rel="noopener" class="ext">{{ icon("external") }}<span>Label Studio</span></a>
     </nav>
     <div class="side-foot">

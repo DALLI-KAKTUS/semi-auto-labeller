@@ -49,15 +49,23 @@
       <thead><tr><th>ad</th><th>durum</th><th>modeller</th><th class="hide-sm">bilgisayar</th><th></th></tr></thead>
       <tbody>
       {% for r in runners %}
-        <tr><td><b>{{ r.name }}</b><div class="muted small">{{ r.owner }} · {{ "ekiple paylaşıldı" if r.shared else "yalnız sahibi kullanabilir" }}</div>
-            {% if r.user_id == user.id %}<form method="post" action="/runners/{{ r.id }}/share" class="inline">
+        <tr><td><b>{{ r.name }}</b>{% if r.kind == "server" %}
+            <div class="server-warn small">{{ icon("alert") }} Sunucunun işlemcisinde çalışır (GPU yok, sınırlı CPU/RAM):
+              kendi bilgisayarınızdan çok daha <b>yavaştır</b>, uzun ve acelesiz işler için. Kullanımı <b>yönetici
+              iznine</b> bağlıdır.</div>
+            {% if not server_ok %}{% if user.server_access == "requested" %}<div class="muted small">İzin isteğiniz yöneticide bekliyor.</div>
+            {% else %}<form method="post" action="/server-access" class="inline-form top-line">
+              <input name="note" placeholder="{{ 'reddedildi; yeniden isteyin: ' if user.server_access == 'denied' else '' }}neden? (ör. 240 görüntülük uzun iş)" aria-label="İstek notu">
+              <button class="btn sm secondary">İzin iste</button></form>{% endif %}{% endif %}
+            {% else %}<div class="muted small">{{ r.owner }} · {{ "ekiple paylaşıldı" if r.shared else "yalnız sahibi kullanabilir" }}</div>{% endif %}
+            {% if r.user_id == user.id and r.kind != "server" %}<form method="post" action="/runners/{{ r.id }}/share" class="inline">
               {% if not r.shared %}<input type="hidden" name="shared" value="1">{% endif %}
               <button class="link-btn small">{{ "Paylaşımı kapat" if r.shared else "Ekiple paylaş" }}</button></form>{% endif %}</td>
           <td class="nowrap"><span class="status-pill {{ 'on' if r.online else 'off' }}"><span class="dot {{ 'on' if r.online else 'off' }}"></span>{{ "çevrimiçi" if r.online else "çevrimdışı" }}</span>
             <div class="muted small">{{ r.last_seen | ago }}</div></td>
           <td>{% for m in r.models %}<div class="model-line"><b>{{ m.name }}</b> <span class="mono muted small">{{ m.version }}</span> <span class="chip">{{ m.device }}</span></div>{% else %}<span class="muted">-</span>{% endfor %}</td>
           <td class="muted small hide-sm">{{ r.info.hostname or "" }} {{ r.info.platform or "" }}</td>
-          <td class="end">{% if user.admin or r.user_id == user.id %}
+          <td class="end">{% if r.kind != "server" and (user.admin or r.user_id == user.id) %}
             <form method="post" action="/runners/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Çalıştırıcı silinsin mi? Bağlantısı geçersiz olur.')"><button class="icon-btn danger" title="Çalıştırıcıyı sil" aria-label="{{ r.name }} sil">{{ icon("trash") }}</button></form>{% endif %}</td></tr>
       {% endfor %}
       </tbody>

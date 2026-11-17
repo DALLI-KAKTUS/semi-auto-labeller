@@ -4,8 +4,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import time
+from pathlib import Path
 
 from .db import DB, now
 
@@ -56,7 +58,7 @@ def login(db: DB, username: str, password: str) -> str | None:
 def session_user(db: DB, token: str | None) -> dict | None:
     if not token:
         return None
-    return db.one("SELECT u.id, u.username, u.admin FROM sessions s JOIN users u ON u.id = s.user_id "
+    return db.one("SELECT u.id, u.username, u.admin, u.server_access FROM sessions s JOIN users u ON u.id = s.user_id "
                   "WHERE s.token = ? AND s.expires > ?", token_hash(token), time.time())
 
 
@@ -75,6 +77,43 @@ def create_runner(db: DB, user_id: int, name: str) -> tuple[int, str]:
 
 def runner_by_token(db: DB, token: str | None) -> dict | None:
     return db.one("SELECT * FROM runners WHERE token_hash = ?", token_hash(token)) if token else None
+
+
+# ------------------------------------------------------------------ sunucu çalıştırıcısı
+SERVER_RUNNER_NAME = "Sunucu (CPU)"
+
+
+def ensure_server_runner(db: DB, token_file: Path) -> int | None:
+    """Sunucu çalıştırıcısının kaydını ve anahtarını hazırlar. Anahtar yalnız iki konteynerin paylaştığı dosyaya
+    yazılır; dosyadaki anahtar kayıtla uyuşmuyorsa yenilenir. Birden çok sunucu işçisi aynı anda çağırabilir."""
+    import fcntl
+
+    owner = db.one("SELECT id FROM users WHERE admin = 1 ORDER BY id LIMIT 1")
+    if not owner:
+        return None
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(token_file.with_suffix(".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        r = db.one("SELECT * FROM runners WHERE kind = 'server'")
+        try:
+            token = token_file.read_text().strip()
+        except OSError:
+            token = ""
+        if r and token and hmac.compare_digest(r["token_hash"], token_hash(token)):
+            return r["id"]
+        token = "engr_" + secrets.token_urlsafe(32)
+        if r:
+            db.run("UPDATE runners SET token_hash = ? WHERE id = ?", token_hash(token), r["id"])
+            rid = r["id"]
+        else:
+            rid = db.run("INSERT INTO runners (user_id, name, token_hash, created, kind) VALUES (?, ?, ?, ?, 'server')",
+                         owner["id"], SERVER_RUNNER_NAME, token_hash(token), now())
+        tmp = token_file.with_suffix(".tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            fh.write(token)
+        os.replace(tmp, token_file)
+        return rid
 
 
 # ------------------------------------------------------------------ eşleştirme (anahtarı elle kopyalamadan bağlanma)

@@ -5,6 +5,7 @@
     LABEL_STUDIO_PUBLIC_URL    tarayıcıdaki bağlantılar için Label Studio adresi (varsayılan: LABEL_STUDIO_URL)
     LABEL_STUDIO_API_KEY       Label Studio anahtarı (hizmet hesabı; legacy token ya da Personal Access Token)
     ENG_ADMIN_USERNAME / ENG_ADMIN_PASSWORD   veritabanında hiç kullanıcı yoksa ilk yönetici bunlarla oluşturulur
+    ENG_SERVER_RUNNER_TOKEN_FILE  sunucu çalıştırıcısının anahtarının yazılacağı paylaşılan dosya (isteğe bağlı)
     ENG_PUBLIC_URL             web uygulamasının dış adresi (çalıştırıcı paketine ve eşleştirme bağlantısına yazılır)
     ENG_SECURE_COOKIES         1 ise oturum çerezi yalnız HTTPS'te gönderilir (Caddy arkasında 1)
 """
@@ -30,6 +31,8 @@ class Settings:
     admin_username: str = field(default_factory=lambda: os.environ.get("ENG_ADMIN_USERNAME", ""))
     admin_password: str = field(default_factory=lambda: os.environ.get("ENG_ADMIN_PASSWORD", ""))
     public_url: str = field(default_factory=lambda: os.environ.get("ENG_PUBLIC_URL", ""))
+    # sunucu çalıştırıcısı konteyneriyle paylaşılan anahtar dosyası (boşsa sunucu çalıştırıcısı yok)
+    server_runner_token_file: str = field(default_factory=lambda: os.environ.get("ENG_SERVER_RUNNER_TOKEN_FILE", ""))
     secure_cookies: bool = field(default_factory=lambda: _bool(os.environ.get("ENG_SECURE_COOKIES")))
     classes: dict = field(default_factory=lambda: dict(C.DEFAULTS["classes"]))
     label_config: str = field(default_factory=lambda: C.LABEL_CONFIG.read_text(encoding="utf-8"))
