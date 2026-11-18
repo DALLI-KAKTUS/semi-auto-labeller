@@ -37,7 +37,7 @@ services:
       LABEL_STUDIO_CSRF_TRUSTED_ORIGINS: https://${LABEL_STUDIO_DOMAIN}
       LABEL_STUDIO_SESSION_COOKIE_SECURE: "1"
       LABEL_STUDIO_CSRF_COOKIE_SECURE: "1"
-      UWSGI_PROCESSES: "2"
+      UWSGI_PROCESSES: "4"
       SECRET_KEY: ${LS_SECRET_KEY:?Set LS_SECRET_KEY in .env}
     volumes:
       - lsdata:/label-studio/data
