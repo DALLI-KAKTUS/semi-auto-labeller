@@ -44,9 +44,15 @@ class LSClient:
         self.url = url.rstrip("/")
         self.client = LabelStudio(base_url=self.url, api_key=api_key)
 
-    def _call(self, fn, *a, **kw):
+    def _call(self, fn, *a, _retry: bool = False, **kw):
         try:
-            return fn(*a, **kw)
+            try:
+                return fn(*a, **kw)
+            except httpx.RemoteProtocolError:
+                # uWSGI işçisi yenilenince açık bağlantı kapanır; yalnız okuma isteklerini bir kez yinele
+                if not _retry:
+                    raise
+                return fn(*a, **kw)
         except httpx.ConnectError as e:
             raise LSError(f"Label Studio'ya bağlanılamadı ({self.url}); `label-studio start` çalışıyor mu?") from e
         except Exception as e:
@@ -108,7 +114,7 @@ class LSClient:
         return out
 
     def task(self, task_id: int):
-        return self._call(self.client.tasks.get, task_id)
+        return self._call(self.client.tasks.get, task_id, _retry=True)
 
     def delete_task(self, task_id: int) -> None:
         self._call(self.client.tasks.delete, task_id)
