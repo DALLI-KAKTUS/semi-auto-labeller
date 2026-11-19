@@ -38,6 +38,8 @@ services:
       LABEL_STUDIO_SESSION_COOKIE_SECURE: "1"
       LABEL_STUDIO_CSRF_COOKIE_SECURE: "1"
       UWSGI_PROCESSES: "4"
+      # Varsayılan 20 dk'da bir işçi yenileme, açılışı ~45 sn süren LS'de sık kesinti yapar. Bellek 1 GB'ı aşarsa yine yenilenir.
+      UWSGI_WORKER_MAX_LIFETIME: "86400"
       SECRET_KEY: ${LS_SECRET_KEY:?Set LS_SECRET_KEY in .env}
     volumes:
       - lsdata:/label-studio/data

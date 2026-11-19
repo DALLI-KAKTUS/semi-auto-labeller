@@ -48,7 +48,7 @@ class LSClient:
         try:
             try:
                 return fn(*a, **kw)
-            except httpx.RemoteProtocolError:
+            except (httpx.RemoteProtocolError, httpx.ReadError):
                 # uWSGI işçisi yenilenince açık bağlantı kapanır; yalnız okuma isteklerini bir kez yinele
                 if not _retry:
                     raise
