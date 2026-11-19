@@ -135,6 +135,17 @@ def to_frame(rgb: np.ndarray, frame: tuple[int, int] | None) -> tuple[np.ndarray
     return rgb, 1
 
 
+def save_web_copy(path: Path, out: Path) -> Path:
+    """Label Studio'ya gidecek hafif kopya: JPEG, kalite 90, renk alt örneklemesiz (4:4:4).
+
+    PNG'nin ~1/5'i boyutunda; piksel farkı ortalama 1 gri seviyenin altında. Uzak sunucuda liste ve
+    görüntüler bu sayede hızlı yüklenir. Model ve dışa aktarma özgün/PNG dosyayı kullanmaya devam eder."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with Image.open(path) as im:
+        im.convert("RGB").save(out, "JPEG", quality=90, subsampling=0, optimize=True)
+    return out
+
+
 def save_display(path: Path, out: Path) -> Path:
     """Tarayıcının gösteremediği görüntüyü (TIFF, CZI) PNG olarak yazar."""
     rgb, _ = read_image(path)

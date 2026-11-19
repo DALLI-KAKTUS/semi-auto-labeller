@@ -190,10 +190,31 @@ class Service:
     def ensure_task(self, ds: dict, img: dict) -> int:
         if img.get("ls_task"):
             return img["ls_task"]
-        tid = self.ls().upload_image(ds["ls_project"], self.path(img, "display"))
+        tid = self.ls().upload_image(ds["ls_project"], self.ls_copy(img))
         self.db.run("UPDATE images SET ls_task = ? WHERE id = ?", tid, img["id"])
         img["ls_task"] = tid
         return tid
+
+    def ls_copy(self, img: dict) -> Path:
+        """Label Studio'ya gönderilen hafif JPEG kopya (yoksa oluşturur)."""
+        disp = self.path(img, "display")
+        if disp.suffix.lower() in (".jpg", ".jpeg"):
+            return disp
+        out = self.image_dir(img) / "ls" / f"{Path(img['name']).stem}.jpg"
+        return out if out.exists() else imageio.save_web_copy(disp, out)
+
+    def relink_ls_jpeg(self, ds: dict, log=print) -> int:
+        """Eski (PNG) Label Studio görevlerini hafif JPEG kopyaya geçirir. Etiketler ve ön etiketler korunur."""
+        ls, n = self.ls(), 0
+        tasks = self.ls_tasks(ds)
+        for img in self.db.images(ds["id"]):
+            t = tasks.get(img["ls_task"])
+            if not t or str(t.data.get("image", "")).lower().endswith((".jpg", ".jpeg")):
+                continue
+            ls.set_task_image(t.id, ls.upload_file(ds["ls_project"], self.ls_copy(img)))
+            n += 1
+            log(f"{n}: görev {t.id} {img['name']}")
+        return n
 
     def sync_tasks(self, ds: dict) -> int:
         n = 0

@@ -134,6 +134,27 @@ class LSClient:
             raise LSError(f"yükleme başarısız ({r.status_code}): {r.text[:200]}")
         return r.json()["task_ids"][0]
 
+    def upload_file(self, project_id: int, path: Path) -> str:
+        """Görev oluşturmadan dosya yükler; Label Studio'daki adresini (/data/upload/...) döndürür."""
+        headers = {k: v for k, v in self.client._client_wrapper.get_headers().items() if k.lower() != "content-type"}
+        try:
+            with open(path, "rb") as fh:
+                r = httpx.post(f"{self.url}/api/projects/{project_id}/import", params={"commit_to_project": "false"},
+                               headers=headers, files=[("file", (path.name, fh))], timeout=120)
+            r.raise_for_status()
+            fid = r.json()["file_upload_ids"][0]
+            f = httpx.get(f"{self.url}/api/import/file-upload/{fid}", headers=headers, timeout=30)
+            f.raise_for_status()
+        except httpx.HTTPError as e:
+            raise LSError(f"dosya yüklenemedi: {e}") from e
+        return "/data/" + f.json()["file"]
+
+    def set_task_image(self, task_id: int, url: str) -> None:
+        """Görevin görüntü adresini değiştirir; etiketler ve ön etiketler aynen kalır."""
+        data = dict(self.task(task_id).data)
+        data["image"] = url
+        self._call(self.client.tasks.update, task_id, data=data)
+
     def add_prediction(self, task_id: int, pred: dict) -> int:
         p = self._call(self.client.predictions.create, task=task_id, result=pred["result"], score=pred["score"],
                        model_version=pred["model_version"])

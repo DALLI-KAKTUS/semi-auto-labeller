@@ -64,6 +64,12 @@ class FakeLS:
                                            annotations=[], predictions=[], total_predictions=0)
         return tid
 
+    def upload_file(self, pid, path: Path):
+        return f"/data/upload/{pid}/abcdef12-{path.name}"
+
+    def set_task_image(self, tid, url):
+        self.tasks_[tid].data["image"] = url
+
     def add_prediction(self, tid, pred):
         t = self.tasks_[tid]
         t.predictions.append({"id": self._id(), "result": copy.deepcopy(pred["result"]),
@@ -144,7 +150,7 @@ def test_full_flow(env):
         assert c.post(f"/api/datasets/{did}/images", files={"file": ("a.png", fh)}).status_code == 400
     assert c.post(f"/api/datasets/{did}/images", files={"file": ("x.txt", b"hi")}).status_code == 400
     assert len(ls.tasks(ds_pid)) == 2
-    assert all(t.data["image"].endswith(".png") for t in ls.tasks(ds_pid))       # TIFF -> PNG görevi
+    assert all(t.data["image"].endswith(".jpg") for t in ls.tasks(ds_pid))       # Label Studio'ya hafif JPEG kopya
 
     # çalıştırıcı: anahtar oluştur, Python eklenti modeliyle bağlan
     page = c.post("/runners", data={"name": "test pc"}).text
@@ -465,3 +471,22 @@ def test_runner_status_api_and_bye(env):
     assert env.client.get("/api/runners").json()["runners"][0]["online"] is False
     assert TestClient(env.app).get("/api/runners", follow_redirects=False).status_code in (303, 401)
     assert f'data-runner="{rid}"' in env.client.get("/runners").text
+
+
+def test_ls_gets_light_jpeg_and_old_tasks_relink(env):
+    c, svc = env.client, env.app.state.svc
+    r = c.post("/datasets", data={"name": "d"}, follow_redirects=False)
+    did = int(r.headers["location"].split("/")[2].split("?")[0])
+    with open(_png(env.tmp, "a.png", w=400, h=300), "rb") as fh:
+        c.post(f"/api/datasets/{did}/images", files={"file": ("a.png", fh)})
+    ds = env.app.state.db.one("SELECT * FROM datasets WHERE id = ?", did)
+    img = env.app.state.db.images(did)[0]
+    task = env.ls.tasks_[img["ls_task"]]
+    assert task.data["image"].endswith("a.jpg")
+    with Image.open(svc.ls_copy(img)) as im:
+        assert im.format == "JPEG" and im.size == (400, 300)
+    task.data["image"] = "/data/upload/1/abcdef12-a.png"                       # eski PNG görevi
+    task.predictions.append({"id": 99})
+    assert svc.relink_ls_jpeg(ds, log=lambda *_: None) == 1
+    assert task.data["image"].endswith(".jpg") and task.predictions == [{"id": 99}]
+    assert svc.relink_ls_jpeg(ds, log=lambda *_: None) == 0
