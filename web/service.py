@@ -206,12 +206,13 @@ class Service:
     def relink_ls_jpeg(self, ds: dict, log=print) -> int:
         """Eski (PNG) Label Studio görevlerini hafif JPEG kopyaya geçirir. Etiketler ve ön etiketler korunur."""
         ls, n = self.ls(), 0
-        tasks = self.ls_tasks(ds)
-        for img in self.db.images(ds["id"]):
-            t = tasks.get(img["ls_task"])
-            if not t or str(t.data.get("image", "")).lower().endswith((".jpg", ".jpeg")):
+        for img in self.db.images(ds["id"]):            # görev görev: tüm görevleri tek istekte çekmek çok ağır
+            if not img["ls_task"]:
                 continue
-            ls.set_task_image(t.id, ls.upload_file(ds["ls_project"], self.ls_copy(img)))
+            t = ls.task(img["ls_task"])
+            if str(t.data.get("image", "")).lower().endswith((".jpg", ".jpeg")):
+                continue
+            ls.set_task_image(t.id, ls.upload_file(ds["ls_project"], self.ls_copy(img)), t.data)
             n += 1
             log(f"{n}: görev {t.id} {img['name']}")
         return n

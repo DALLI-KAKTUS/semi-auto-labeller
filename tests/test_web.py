@@ -67,7 +67,7 @@ class FakeLS:
     def upload_file(self, pid, path: Path):
         return f"/data/upload/{pid}/abcdef12-{path.name}"
 
-    def set_task_image(self, tid, url):
+    def set_task_image(self, tid, url, data=None):
         self.tasks_[tid].data["image"] = url
 
     def add_prediction(self, tid, pred):

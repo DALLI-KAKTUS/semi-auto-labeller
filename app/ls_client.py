@@ -149,9 +149,9 @@ class LSClient:
             raise LSError(f"dosya yüklenemedi: {e}") from e
         return "/data/" + f.json()["file"]
 
-    def set_task_image(self, task_id: int, url: str) -> None:
+    def set_task_image(self, task_id: int, url: str, data: dict | None = None) -> None:
         """Görevin görüntü adresini değiştirir; etiketler ve ön etiketler aynen kalır."""
-        data = dict(self.task(task_id).data)
+        data = dict(self.task(task_id).data if data is None else data)
         data["image"] = url
         self._call(self.client.tasks.update, task_id, data=data)
 
