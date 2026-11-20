@@ -1,5 +1,5 @@
 # /opt/web-gateway/config/sites/eng-pc12.caddy
-# Ortak gateway üzerinden ENG web (eng-pc12-edge ağı) ve Label Studio (web-gateway ağı).
+# Ortak gateway üzerinden ENG web ve Label Studio (ikisi de eng-pc12-edge ağında).
 eng-pc12.dalli-kaktus.tr {
     encode zstd gzip
     import security_headers

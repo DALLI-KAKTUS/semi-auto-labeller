@@ -2,10 +2,11 @@
 # docker compose -f docker-compose.yml -f deploy/compose.vps.yml up -d --build
 #
 # Ağ yalıtımı (bir kez, elle):
-#   docker network create --internal eng-pc12-edge   # yalnız Caddy <-> web
+#   docker network create --internal eng-pc12-edge   # yalnız Caddy <-> web ve Label Studio
 #   docker network create --internal eng-pc12-app    # yalnız web <-> Label Studio
-#   docker network connect --alias eng-pc12-web eng-pc12-edge web-gateway
-# web internete ve web-gateway'deki diğer servislere ulaşamaz.
+# Caddy'nin eng-pc12-edge bağlantısı /opt/web-gateway kurulumunda kalıcıdır.
+# web ve Label Studio ortak web-gateway ağında değildir; diğer servisler onlara ulaşamaz.
+# web internete çıkamaz; Label Studio yalnız kendi default ağı (postgres) üzerinden çıkabilir.
 services:
   web:
     networks: !override
@@ -24,13 +25,10 @@ services:
       default: {}
       eng-pc12-app:
         aliases: [label-studio]
-      web-gateway:
+      eng-pc12-edge:
         aliases: [eng-pc12-labelstudio]
 
 networks:
-  web-gateway:
-    external: true
-    name: web-gateway
   eng-pc12-edge:
     external: true
     name: eng-pc12-edge

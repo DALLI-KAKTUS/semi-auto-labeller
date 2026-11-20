@@ -113,7 +113,10 @@ docker compose ps
 **Mevcut ortak Caddy kullanan VPS (dalli-kaktus.tr):** İkinci Caddy açmayın. `docker compose -f docker-compose.yml
 -f deploy/compose.vps.yml up -d --build` kullanın; ardından `deploy/eng-pc12.caddy` dosyasını
 `/opt/web-gateway/config/sites/eng-pc12.caddy` konumuna koyup ortak gateway'de Caddy yapılandırmasını doğrulayın ve
-yeniden yükleyin. Bu compose yalnız web ve Label Studio'yu `web-gateway` ağına bağlar; PostgreSQL iç ağda kalır.
+yeniden yükleyin. Web ve Label Studio ortak `web-gateway` ağında değildir: Caddy onlara yalnız `eng-pc12-edge`
+(internal) ağıyla ulaşır; web ↔ Label Studio `eng-pc12-app` (internal) ağını kullanır, PostgreSQL iç ağda kalır.
+İki ağı bir kez `docker network create --internal …` ile oluşturun ve Caddy'yi `eng-pc12-edge`'e bağlayın
+(ayrıntı `deploy/compose.vps.yml` başında).
 
 VPS dağıtımı (ortak Caddy, HTTPS, üretim uWSGI) ve Mac'teki yerel çalıştırıcıyla sentetik görüntünün sunucu üzerinden
 Label Studio'ya ön etiketlenmesi doğrulandı. Sunucuya yalnız 80/443 açın; 8000/8080/5432 dışarı verilmez.
